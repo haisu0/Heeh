@@ -100,6 +100,8 @@ ACCOUNTS = [
             "dongeng",
             "brat",
             "cecan",
+            "blurface",
+            "hd",
         ],
     }
 ]
@@ -180,6 +182,156 @@ async def cerdascermat_handler(event, client):
     text += "Contoh: `/ccmath` untuk main Cerdas Cermat Matematika."
 
     await event.respond(text)
+
+
+
+
+
+
+import aiohttp
+import random
+
+VALID_EXT = (".jpg", ".jpeg", ".png", ".gif", ".webp")
+
+async def hd_handler(event, client):
+    # hanya di chat private
+    if not event.is_private:
+        await event.respond("❌ Fitur HD hanya bisa digunakan di chat private.")
+        return
+
+    # hanya userbot sendiri
+    if event.sender_id != client.uid:
+        await event.respond("❌ Fitur HD hanya bisa digunakan oleh userbot itu sendiri.")
+        return
+
+    args = event.raw_text.strip().split()
+    scale = None
+    image_url = None
+
+    # cek argumen scale
+    if len(args) > 1 and args[1] in ["2", "4"]:
+        scale = int(args[1])
+        # kalau ada link setelah scale
+        if len(args) > 2:
+            image_url = args[2]
+    elif len(args) > 1:
+        # kalau argumen bukan 2/4, mungkin link
+        image_url = args[1]
+
+    # kalau scale belum ditentukan → random
+    if scale is None:
+        scale = random.choice([2, 4])
+
+    # cek sumber gambar
+    if not image_url:
+        if event.is_reply:
+            reply_msg = await event.get_reply_message()
+            if reply_msg.photo:
+                image_url = await client.download_media(reply_msg, file=bytes)
+            elif reply_msg.text and ("http://" in reply_msg.text or "https://" in reply_msg.text):
+                image_url = reply_msg.text.strip()
+            else:
+                await event.respond("❌ Reply hanya bisa ke foto atau teks berisi link gambar.")
+                return
+        elif event.photo and args[0] == "/hd":
+            image_url = await client.download_media(event.message, file=bytes)
+        else:
+            await event.respond("❌ Gunakan `/hd`, `/hd 2`, `/hd 4` dengan reply foto, reply teks berisi link gambar, kirim foto dengan caption `/hd`, atau `/hd <link>`.")
+            return
+
+    # validasi link gambar
+    if isinstance(image_url, str):
+        if not image_url.lower().endswith(VALID_EXT):
+            await event.respond("❌ Link bukan gambar valid. Harus berakhiran .jpg, .jpeg, .png, .gif, atau .webp.")
+            return
+
+    await event.respond(f"🔍 Sedang meng-upscale gambar dengan scale {scale}x...")
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                "https://api.siputzx.my.id/api/iloveimg/upscale",
+                data={"image": image_url, "scale": str(scale)}
+            ) as resp:
+                data = await resp.json()
+
+        result_url = data.get("result") or data.get("image")
+        if result_url:
+            await client.send_file(event.chat_id, result_url, caption=f"✨ HD Upscale {scale}x selesai")
+        else:
+            await event.respond("❌ Gagal memproses HD upscale dari API.")
+
+    except Exception as e:
+        await event.respond(f"❌ Error HD: {e}")
+
+
+
+
+import aiohttp
+
+VALID_EXT = (".jpg", ".jpeg", ".png", ".gif", ".webp")
+
+async def blurface_handler(event, client):
+    # hanya di chat private
+    if not event.is_private:
+        await event.respond("❌ Fitur blur face hanya bisa digunakan di chat private.")
+        return
+
+    # hanya userbot sendiri
+    if event.sender_id != client.uid:
+        await event.respond("❌ Fitur blur face hanya bisa digunakan oleh userbot itu sendiri.")
+        return
+
+    image_url = None
+    args = event.raw_text.strip().split(maxsplit=1)
+
+    # 1. /blurface <link gambar>
+    if len(args) > 1:
+        image_url = args[1]
+
+    # 2. Reply pesan
+    elif event.is_reply:
+        reply_msg = await event.get_reply_message()
+        if reply_msg.photo:
+            image_url = await client.download_media(reply_msg, file=bytes)
+        elif reply_msg.text and ("http://" in reply_msg.text or "https://" in reply_msg.text):
+            image_url = reply_msg.text.strip()
+        else:
+            await event.respond("❌ Reply hanya bisa ke foto atau teks berisi link gambar.")
+            return
+
+    # 3. Kirim foto dengan caption /blurface
+    elif event.photo and event.raw_text.strip() == "/blurface":
+        image_url = await client.download_media(event.message, file=bytes)
+
+    else:
+        await event.respond("❌ Gunakan `/blurface <link gambar>`, reply foto, reply teks berisi link gambar, atau kirim foto dengan caption `/blurface`.")
+        return
+
+    # Validasi link gambar
+    if isinstance(image_url, str):
+        if not image_url.lower().endswith(VALID_EXT):
+            await event.respond("❌ Link bukan gambar valid. Harus berakhiran .jpg, .jpeg, .png, .gif, atau .webp.")
+            return
+
+    await event.respond("🔍 Sedang memproses blur face...")
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                "https://api.siputzx.my.id/api/iloveimg/blurface",
+                data={"image": image_url}
+            ) as resp:
+                data = await resp.json()
+
+        result_url = data.get("result") or data.get("image")
+        if result_url:
+            await client.send_file(event.chat_id, result_url, caption="😎 Blur face selesai")
+        else:
+            await event.respond("❌ Gagal memproses blur face dari API.")
+
+    except Exception as e:
+        await event.respond(f"❌ Error blur face: {e}")
 
 
 
@@ -6842,6 +6994,18 @@ async def main():
             @client.on(events.NewMessage(pattern=r"^/cecan(?:\s+\w+)?$"))
             async def cecan_event(event, c=client):
                 await cecan_handler(event, c)
+
+        if "blurface" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^/blurface(?:\s+.+)?$"))
+            async def blurface_event(event, c=client):
+                await blurface_handler(event, c)
+
+        if "hd" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^/hd(?:\s+.+)?$"))
+            async def hd_event(event, c=client):
+                await hd_handler(event, c)
+
+
 
         
 
