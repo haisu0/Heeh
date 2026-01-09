@@ -388,12 +388,34 @@ async def random_teka_handler(event, client):
     kode, nama = pilihan
     await event.respond(f"🎲 Random memilih game: **{nama}**")
 
-    if kode == "tebakangka":
-        return await tebakangka_handler(event, client)
+    if kode == "tekateki":
+        return await tekateki_handler(event, client)
+    elif kode == "asahotak":
+        return await asahotak_handler(event, client)
+    elif kode == "siapakahaku":
+        return await siapakahaku_handler(event, client)
+    elif kode == "tebakkata":
+        return await tebakkata_handler(event, client)
+    elif kode == "kuis":
+        return await kuis_handler(event, client)
+    elif kode == "tebaklagu":
+        return await tebaklagu_handler(event, client)
     elif kode == "tebakgambar":
         return await tebakgambar_handler(event, client)
-    elif kode == "tebaklogika":
-        return await tebaklogika_handler(event, client)
+    elif kode == "lengkapikalimat":
+        return await lengkapikalimat_handler(event, client)
+    elif kode == "tebaklirik":
+        return await tebaklirik_handler(event, client)
+    elif kode == "caklontong":
+        return await caklontong_handler(event, client)
+    elif kode == "tebaktebakan":
+        return await tebaktebakan_handler(event, client)
+    elif kode == "math":
+        return await math_handler(event, client)
+    elif kode == "tebakhewan":
+        return await tebakhewan_handler(event, client)
+    elif kode == "susunkata":
+        return await susunkata_handler(event, client)
 
 
 # === RANDOM SEMUA (CERDAS CERMAT + TEKA-TEKI + TICTACTOE) ===
