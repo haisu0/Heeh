@@ -98,6 +98,7 @@ ACCOUNTS = [
             "tekarandom",
             "random",
             "dongeng",
+            "brat",
             "cecan",
         ],
     }
@@ -108,6 +109,14 @@ clients = []
 
 # waktu start untuk /ping uptime
 start_time_global = datetime.now()
+
+
+
+
+
+
+
+
 
 
 
@@ -171,6 +180,50 @@ async def cerdascermat_handler(event, client):
     text += "Contoh: `/ccmath` untuk main Cerdas Cermat Matematika."
 
     await event.respond(text)
+
+
+
+
+import html
+
+async def brat_handler(event, client):
+    # hanya di chat private
+    if not event.is_private:
+        await event.respond("❌ Fitur brat hanya bisa digunakan di chat private.")
+        return
+
+    # hanya userbot sendiri
+    me = await client.get_me()
+    if event.sender_id != me.id:
+        return
+
+    args = event.raw_text.strip().split(maxsplit=1)
+    text = None
+
+    if len(args) > 1:
+        text = args[1]
+    elif event.is_reply:
+        reply_msg = await event.get_reply_message()
+        if reply_msg.text:
+            text = reply_msg.text
+        else:
+            await event.respond("❌ Fitur brat hanya bisa digunakan untuk reply pesan teks, bukan media.")
+            return
+    else:
+        await event.respond("❌ Gunakan `/brat <text>` atau reply pesan teks.")
+        return
+
+    await event.respond("🎀 Sedang membuat brat...")
+
+    try:
+        # langsung kirim link API sebagai foto
+        url = f"https://api.siputzx.my.id/api/m/brat?text={text}&isAnimated=false&delay=500"
+        caption = f"🎀 Brat untuk teks: {html.escape(text)}"
+
+        await client.send_file(event.chat_id, url, caption=caption)
+
+    except Exception as e:
+        await event.respond(f"❌ Error brat: {e}")
 
 
 
@@ -6756,6 +6809,12 @@ async def main():
             @client.on(events.NewMessage(pattern=r"^/dongeng$"))
             async def dongeng_event(event, c=client):
                 await dongeng_handler(event, c)
+
+        if "brat" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^/brat(?:\s+.+)?$"))
+            async def brat_event(event, c=client):
+                await brat_handler(event, c)
+
 
         if "cecan" in acc["features"]:
             @client.on(events.NewMessage(pattern=r"^/cecan(?:\s+\w+)?$"))
