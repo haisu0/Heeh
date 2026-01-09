@@ -1,3 +1,5 @@
+# === FITUR: AI CHAT ===
+
 async def ai_handler(event, client):
     # hanya aktif di private chat
     if not event.is_private:
@@ -50,58 +52,3 @@ async def ai_handler(event, client):
         await loading_msg.edit(f"⚠ Error AI: `{e}`")
 
 
-
-
-# ===== FITUR CONFESS =====
-import asyncio, random, string
-from telethon import events
-
-# State global, dipisahkan per akun (client)
-confess_sessions = {}    # {client_id: {user_id: True}}
-pending_confess = {}     # {client_id: {msg_id: {"sender": id, "target": id}}}
-rooms = {}               # {client_id: {room_id: {"sender": id, "target": id, "messages": [], "expire": task}}}
-
-def gen_id():
-    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-
-def _init_client_state(client):
-    cid = id(client)
-    confess_sessions.setdefault(cid, {})
-    pending_confess.setdefault(cid, {})
-    rooms.setdefault(cid, {})
-    return cid
-
-def _user_in_active_room(cid, user_id):
-    for rid, room in rooms[cid].items():
-        if user_id in (room["sender"], room["target"]):
-            return rid
-    return None
-
-def _user_has_pending_confess(cid, user_id):
-    for mid, data in pending_confess[cid].items():
-        if data.get("sender") == user_id or data.get("target") == user_id:
-            return True
-    return False
-
-async def confess_handler(event, client):
-    if not event.is_private:
-        return  # hanya aktif di private chat
-
-    text = (event.message.message or "").strip()
-    sender_id = event.sender_id
-    cid = _init_client_state(client)
-
-    # === /cancel: batalkan sesi pengisian format ===
-    if text == "/cancel":
-        if confess_sessions[cid].pop(sender_id, None):
-            await event.reply("✅ Sesi confess dibatalkan.")
-        else:
-            await event.reply("ℹ️ Tidak ada sesi confess yang aktif.")
-        return
-
-    # === /confess: mulai sesi, blokir jika user sedang aktif/pending ===
-    if text == "/confess":
-        if _user_in_active_room(cid, sender_id):
-            await event.reply("❌ Kamu masih berada di room anonim yang aktif. Selesaikan dulu dengan `/endchat`.")
-            return
-        if
