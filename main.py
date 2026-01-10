@@ -54,7 +54,7 @@ API_HASH = '1cfb28ef51c138a027786e43a27a8225'
 # === DAFTAR AKUN ===
 ACCOUNTS = [
     {
-        "session": "1BVtsOLEBu66mzPo8Y7t_a_pBFF1SmryCN1W9OMN9HDbApuLagBczdKMiT63gCuUjwrr4LWFYEOewkowWiu-ZiAbrzjat6ZcrfsIjl1K4MXEcnNMT0vCdsr-3w2Ja7uNsBEtyoRxYb928u71y5x4056DdbF1BSxHXArN7Amtc4vW86R172lceNCVSqhX4IXBYCLqIAwp1RaXV9F5FYz4CHNhpe9SDmxDjw_eKPNnT136ve5-QKcivwENvizzJhaqbq2imyJXbUZXPn5xN994Fw7A8x5BvWDDkqy1gxXKyGXihWpyJ-4q0ABLGGaQOS0PX6iRpT9xC2qZr9QDbu49ut8KbKX3e9Jc=",
+        "session": "1BVtsOMEBuwLgjHU7vY--doKYk7GrE309rujy67UA1hbTpexs3djpZtZQFYCuZUsPJ56aMVPGa5vFVAEWyh0CjrpVu_aM8pDVAKblPkQGohBgfI8Jg1w6Ko_zp5arovAA98bMl0_kEXFERO3q-en5LiU-0O_iyZQYz8s-63quMNLuGCbwqVR0Bj7VkppxkM7r9XIZwpuP7a85vQxLm98Kx_qczfGBsTfhBsDjsYZDoaDz6ErtG_BfgcFbTWGlruVkMxCGN-f8geYGpfCClwMeP4dVf5_uwuEKlyPqRfo9u8qP8PXr2ZYy_Qhw0tv642AUW-yEtwnFWM2MveCHLUL-yRwE6TATTLw=",
         "log_channel": None,
         "log_admin": 8229706287,
         "features": [
@@ -196,12 +196,11 @@ VALID_EXT = (".jpg", ".jpeg", ".png", ".gif", ".webp")
 async def hd_handler(event, client):
     # hanya di chat private
     if not event.is_private:
-        await event.respond("❌ Fitur HD hanya bisa digunakan di chat private.")
         return
 
     # hanya userbot sendiri
-    if event.sender_id != client.uid:
-        await event.respond("❌ Fitur HD hanya bisa digunakan oleh userbot itu sendiri.")
+    me = await client.get_me()
+    if event.sender_id != me.id:
         return
 
     args = event.raw_text.strip().split()
@@ -248,19 +247,10 @@ async def hd_handler(event, client):
     await event.respond(f"🔍 Sedang meng-upscale gambar dengan scale {scale}x...")
 
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                "https://api.siputzx.my.id/api/iloveimg/upscale",
-                data={"image": image_url, "scale": str(scale)}
-            ) as resp:
-                data = await resp.json()
-
-        result_url = data.get("result") or data.get("image")
-        if result_url:
-            await client.send_file(event.chat_id, result_url, caption=f"✨ HD Upscale {scale}x selesai")
-        else:
-            await event.respond("❌ Gagal memproses HD upscale dari API.")
-
+        url = f"https://api.siputzx.my.id/api/iloveimg/upscale?image={image_url}&scale={str(scale)}"
+        
+        await client.send_file(event.chat_id, url, caption=f"✨ HD Upscale {scale}x selesai")
+        
     except Exception as e:
         await event.respond(f"❌ Error HD: {e}")
 
@@ -274,12 +264,11 @@ VALID_EXT = (".jpg", ".jpeg", ".png", ".gif", ".webp")
 async def blurface_handler(event, client):
     # hanya di chat private
     if not event.is_private:
-        await event.respond("❌ Fitur blur face hanya bisa digunakan di chat private.")
         return
 
     # hanya userbot sendiri
-    if event.sender_id != client.uid:
-        await event.respond("❌ Fitur blur face hanya bisa digunakan oleh userbot itu sendiri.")
+    me = await client.get_me()
+    if event.sender_id != me.id:
         return
 
     image_url = None
@@ -317,19 +306,10 @@ async def blurface_handler(event, client):
     await event.respond("🔍 Sedang memproses blur face...")
 
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                "https://api.siputzx.my.id/api/iloveimg/blurface",
-                data={"image": image_url}
-            ) as resp:
-                data = await resp.json()
-
-        result_url = data.get("result") or data.get("image")
-        if result_url:
-            await client.send_file(event.chat_id, result_url, caption="😎 Blur face selesai")
-        else:
-            await event.respond("❌ Gagal memproses blur face dari API.")
-
+        url = f"https://api.siputzx.my.id/api/iloveimg/blurface?image={image_url}"
+        
+        await client.send_file(event.chat_id, url, caption="😎 Blur face selesai")
+        
     except Exception as e:
         await event.respond(f"❌ Error blur face: {e}")
 
@@ -341,7 +321,6 @@ import html
 async def brat_handler(event, client):
     # hanya di chat private
     if not event.is_private:
-        await event.respond("❌ Fitur brat hanya bisa digunakan di chat private.")
         return
 
     # hanya userbot sendiri
@@ -3894,7 +3873,7 @@ async def ai3_handler(event, client):
             async with session.get(url, timeout=60) as resp:
                 data = await resp.json()
 
-        if data.get("status") and "answer" in data:
+        if data.get("status") and "result" in data:
             output = data["result"]
             answer = output["answer"]
             
@@ -3948,7 +3927,7 @@ async def ai4_handler(event, client):
             async with session.get(url, timeout=60) as resp:
                 data = await resp.json()
 
-        if data.get("status") and "response" in data:
+        if data.get("status") and "result" in data:
             output = data["result"]
             answer = output["response"]
             
@@ -4012,6 +3991,55 @@ async def ai5_handler(event, client):
 
     except Exception as e:
         await loading_msg.edit(f"⚠ Error AI: `{e}`")
+
+
+
+async def simsimi_handler(event, client):
+    
+
+    # Ambil teks dari argumen
+    input_text = (event.pattern_match.group(1) or "").strip()
+
+    # Jika reply ke pesan lain
+    if event.is_reply:
+        reply = await event.get_reply_message()
+        if reply:
+            # Jika reply adalah media (foto, video, audio, dokumen), tolak
+            if reply.media:
+                return
+
+            # Ambil isi text dari reply
+            if reply.message:
+                if input_text:
+                    input_text = f"{input_text}\n\n{reply.message.strip()}"
+                else:
+                    input_text = reply.message.strip()
+
+    if not input_text:
+        await event.reply("❌ Harus ada teks atau reply pesan.")
+        return
+
+    # 🔄 pesan loading keren
+    loading_msg = await event.reply("🤖✨ AI sedang berpikir keras...")
+
+    try:
+        # panggil API
+        url = f"https://api.nekolabs.web.id/text.gen/simisimi?text={input_text}&lang=id"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=60) as resp:
+                data = await resp.json()
+
+        if data.get("success") and "result" in data:
+            output = data["result"]
+            
+        else:
+            output = "⚠ AI tidak memberikan respon."
+
+        await loading_msg.edit(f"{output}", parse_mode="markdown")
+
+    except Exception as e:
+        await loading_msg.edit(f"⚠ Error AI: `{e}`")
+
 
 
 
@@ -6975,6 +7003,11 @@ async def main():
             @client.on(events.NewMessage(pattern=r'^/ai5(?:\s+(.*))?$'))
             async def ai5_command_handler(event, c=client):
                 await ai5_handler(event, c)
+
+        if "ai" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r'^/simi(?:\s+(.*))?$'))
+            async def simsimi_command_handler(event, c=client):
+                await simsimi_handler(event, c)
 
 
         
