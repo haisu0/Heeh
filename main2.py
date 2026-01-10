@@ -1767,6 +1767,55 @@ async def ai5_handler(event, client):
 
 
 
+async def simsimi_handler(event, client):
+    
+
+    # Ambil teks dari argumen
+    input_text = (event.pattern_match.group(1) or "").strip()
+
+    # Jika reply ke pesan lain
+    if event.is_reply:
+        reply = await event.get_reply_message()
+        if reply:
+            # Jika reply adalah media (foto, video, audio, dokumen), tolak
+            if reply.media:
+                return
+
+            # Ambil isi text dari reply
+            if reply.message:
+                if input_text:
+                    input_text = f"{input_text}\n\n{reply.message.strip()}"
+                else:
+                    input_text = reply.message.strip()
+
+    if not input_text:
+        await event.reply("❌ Harus ada teks atau reply pesan.")
+        return
+
+    # 🔄 pesan loading keren
+    loading_msg = await event.reply("🤖✨ AI sedang berpikir keras...")
+
+    try:
+        # panggil API
+        url = f"https://api.nekolabs.web.id/text.gen/simisimi?text={input_text}&lang=id"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=60) as resp:
+                data = await resp.json()
+
+        if data.get("status") and "result" in data:
+            output = data["result"]
+            
+        else:
+            output = "⚠ AI tidak memberikan respon."
+
+        await loading_msg.edit(f"{output}", parse_mode="markdown")
+
+    except Exception as e:
+        await loading_msg.edit(f"⚠ Error AI: `{e}`")
+
+
+
+
 # ===== FITUR CONFESS =====
 import asyncio, random, string
 from telethon import events
@@ -4588,6 +4637,11 @@ async def main():
             @client.on(events.NewMessage(pattern=r'^/ai5(?:\s+(.*))?$'))
             async def ai5_command_handler(event, c=client):
                 await ai5_handler(event, c)
+
+        if "ai" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r'^/simi(?:\s+(.*))?$'))
+            async def simsimi_command_handler(event, c=client):
+                await simsimi_handler(event, c)
 
 
         
