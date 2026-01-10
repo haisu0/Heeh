@@ -271,6 +271,48 @@ async def random_all_handler(event, client):
 
 
 
+# === RANDOM CERDAS CERMAT ===
+async def random_cc_handler(event, client):
+    pilihan = random.choice([
+        ("ccmath", "Cerdas Cermat Matematika"),
+        ("ccipa", "Cerdas Cermat IPA"),
+        ("ccips", "Cerdas Cermat IPS"),
+        ("ccbindo", "Cerdas Cermat Bindo"),
+        ("ccbing", "Cerdas Cermat Bing"),
+        ("ccjawa", "Cerdas Cermat Jawa"),
+        ("ccpai", "Cerdas Cermat PAI"),
+        ("ccpkn", "Cerdas Cermat PKN"),
+        ("ccpenjas", "Cerdas Cermat Penjas"),
+        ("cctik", "Cerdas Cermat TIK")
+    ])
+
+    kode, nama = pilihan
+    await event.respond(f"🎲 Random memilih game: **{nama}**")
+
+    if kode == "ccmath":
+        return await ccmath_handler(event, client)
+    elif kode == "ccipa":
+        return await ccipa_handler(event, client)
+    elif kode == "ccips":
+        return await ccips_handler(event, client)
+    elif kode == "ccbindo":
+        return await ccbindo_handler(event, client)
+    elif kode == "ccbing":
+        return await ccbing_handler(event, client)
+    elif kode == "ccjawa":
+        return await ccjawa_handler(event, client)
+    elif kode == "ccpai":
+        return await ccpai_handler(event, client)
+    elif kode == "ccpkn":
+        return await ccpkn_handler(event, client)
+    elif kode == "ccpenjas":
+        return await ccpenjas_handler(event, client)
+    elif kode == "cctik":
+        return await cctik_handler(event, client)
+
+
+
+
 # === CLASS SUSUN KATA ===
 class SusunKataGame:
     def __init__(self, player_x):
