@@ -147,6 +147,33 @@ async def game_handler(event, client):
 
 
 
+async def cerdascermat_handler(event, client):
+    
+
+    cc_games = [
+        ("ccmath", "Cerdas Cermat Matematika"),
+        ("ccipa", "Cerdas Cermat IPA"),
+        ("ccips", "Cerdas Cermat IPS"),
+        ("ccbindo", "Cerdas Cermat Bindo"),
+        ("ccbing", "Cerdas Cermat Bing"),
+        ("ccjawa", "Cerdas Cermat Jawa"),
+        ("ccpai", "Cerdas Cermat PAI"),
+        ("ccpkn", "Cerdas Cermat PKN"),
+        ("ccpenjas", "Cerdas Cermat Penjas"),
+        ("cctik", "Cerdas Cermat TIK"),
+    ]
+
+    text = "🧠 **Daftar Cerdas Cermat yang tersedia:**\n\n"
+    for cmd, name in cc_games:
+        text += f"• `{cmd}` → {name}\n"
+
+    text += "\n📌 Cara main: ketik `/namacerdas` untuk memulai.\n"
+    text += "Contoh: `/ccmath` untuk main Cerdas Cermat Matematika."
+
+    await event.respond(text)
+
+
+
 import random
 
 CECAN_ENDPOINTS = {
