@@ -248,17 +248,10 @@ async def hd_handler(event, client):
     await event.respond(f"🔍 Sedang meng-upscale gambar dengan scale {scale}x...")
 
     try:
-        url = "https://api.siputzx.my.id/api/iloveimg/upscale",
-                data={"image": image_url, "scale": str(scale)}
-            ) as resp:
-                data = await resp.json()
-
-        result_url = data.get("result") or data.get("image")
-        if result_url:
-            await client.send_file(event.chat_id, result_url, caption=f"✨ HD Upscale {scale}x selesai")
-        else:
-            await event.respond("❌ Gagal memproses HD upscale dari API.")
-
+        url = f"https://api.siputzx.my.id/api/iloveimg/upscale?image={image_url}&scale={str(scale)}"
+        
+        await client.send_file(event.chat_id, url, caption=f"✨ HD Upscale {scale}x selesai")
+        
     except Exception as e:
         await event.respond(f"❌ Error HD: {e}")
 
@@ -315,19 +308,10 @@ async def blurface_handler(event, client):
     await event.respond("🔍 Sedang memproses blur face...")
 
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                "https://api.siputzx.my.id/api/iloveimg/blurface",
-                data={"image": image_url}
-            ) as resp:
-                data = await resp.json()
-
-        result_url = data.get("result") or data.get("image")
-        if result_url:
-            await client.send_file(event.chat_id, result_url, caption="😎 Blur face selesai")
-        else:
-            await event.respond("❌ Gagal memproses blur face dari API.")
-
+        url = f"https://api.siputzx.my.id/api/iloveimg/blurface?image={image_url}"
+        
+        await client.send_file(event.chat_id, url, caption="😎 Blur face selesai")
+        
     except Exception as e:
         await event.respond(f"❌ Error blur face: {e}")
 
