@@ -248,9 +248,7 @@ async def hd_handler(event, client):
     await event.respond(f"🔍 Sedang meng-upscale gambar dengan scale {scale}x...")
 
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                "https://api.siputzx.my.id/api/iloveimg/upscale",
+        url = "https://api.siputzx.my.id/api/iloveimg/upscale",
                 data={"image": image_url, "scale": str(scale)}
             ) as resp:
                 data = await resp.json()
