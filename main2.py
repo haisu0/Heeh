@@ -54,7 +54,7 @@ API_HASH = '1cfb28ef51c138a027786e43a27a8225'
 # === DAFTAR AKUN ===
 ACCOUNTS = [
     {
-        "session": "1BVtsOKgBu1U0o7Ey4oqcQwY-cwZUUrbH7Sg1FmmohHhNqKlg4ZwW0zCgWsqCwPiGGyVqzdrNdY_CKCa64TU5mEAhifyoS1B-Ujcw2xIDgYLRodYVCUoIs2HnPkZg0_tp0Q6zYTO6nR8tqCPAslc2e3-d00lnqW450oVTrNBjnMXQmPt9aHDwETiVJecviMFnkoQG3zdazRZrjevbTm6yJhkJdWuLxiQhv3QSY82eHFBAkVNyFIn0QFVzsUhNuaAvMPBYolh3YPFWMka9eZAJfEdDg7nV6TOIoEvdE56rYhBUheEoPTGB-jwnFS1H_4wQHJMrrpk6gHeAWVUaOVjH1KCINnRwsqo=",
+        "session": "1BVtsOMEBuwLgjHU7vY--doKYk7GrE309rujy67UA1hbTpexs3djpZtZQFYCuZUsPJ56aMVPGa5vFVAEWyh0CjrpVu_aM8pDVAKblPkQGohBgfI8Jg1w6Ko_zp5arovAA98bMl0_kEXFERO3q-en5LiU-0O_iyZQYz8s-63quMNLuGCbwqVR0Bj7VkppxkM7r9XIZwpuP7a85vQxLm98Kx_qczfGBsTfhBsDjsYZDoaDz6ErtG_BfgcFbTWGlruVkMxCGN-f8geYGpfCClwMeP4dVf5_uwuEKlyPqRfo9u8qP8PXr2ZYy_Qhw0tv642AUW-yEtwnFWM2MveCHLUL-yRwE6TATTLw=",
         "log_channel": None,
         "log_admin": 8229706287,
         "features": [
@@ -84,8 +84,6 @@ ACCOUNTS = [
             "math",
             "tebakhewan",
             "susunkata",
-            "random",
-            "cecan",
             "ccmath",
             "ccipa",
             "ccips",
@@ -97,6 +95,13 @@ ACCOUNTS = [
             "ccpenjas",
             "cctik",
             "ccrandom",
+            "tekarandom",
+            "random",
+            "dongeng",
+            "brat",
+            "cecan",
+            "blurface",
+            "hd",
         ],
     }
 ]
@@ -106,6 +111,14 @@ clients = []
 
 # waktu start untuk /ping uptime
 start_time_global = datetime.now()
+
+
+
+
+
+
+
+
 
 
 
@@ -145,8 +158,6 @@ async def game_handler(event, client):
 
     await event.respond(text)
 
-
-
 async def cerdascermat_handler(event, client):
     
 
@@ -174,6 +185,252 @@ async def cerdascermat_handler(event, client):
 
 
 
+
+
+
+import random
+
+VALID_EXT = (".jpg", ".jpeg", ".png", ".gif", ".webp")
+
+async def hd_handler(event, client):
+    if not event.is_private:
+        return
+
+    me = await client.get_me()
+    if event.sender_id != me.id:
+        return
+
+    args = event.raw_text.strip().split()
+    scale = None
+    image_url = None
+
+    if len(args) > 1 and args[1] in ["2", "4"]:
+        scale = int(args[1])
+        if len(args) > 2:
+            image_url = args[2]
+    elif len(args) > 1:
+        image_url = args[1]
+
+    if scale is None:
+        scale = random.choice([2, 4])
+
+    async def upload_to_catbox(path):
+        async with aiohttp.ClientSession() as session:
+            with open(path, "rb") as f:
+                form = aiohttp.FormData()
+                form.add_field("reqtype", "fileupload")
+                form.add_field("fileToUpload", f, filename=os.path.basename(path))
+                resp = await session.post("https://catbox.moe/user/api.php", data=form)
+                return (await resp.text()).strip()
+
+    # ambil sumber gambar
+    if not image_url:
+        if event.is_reply:
+            reply_msg = await event.get_reply_message()
+            if reply_msg.photo:
+                path = await client.download_media(reply_msg)
+                image_url = await upload_to_catbox(path)
+                os.remove(path)
+            elif reply_msg.text and ("http://" in reply_msg.text or "https://" in reply_msg.text):
+                image_url = reply_msg.text.strip()
+            else:
+                await event.respond("❌ Reply hanya bisa ke foto atau teks berisi link gambar.")
+                return
+        elif event.photo and args[0] == "/hd":
+            path = await client.download_media(event.message)
+            image_url = await upload_to_catbox(path)
+            os.remove(path)
+        else:
+            await event.respond("❌ Gunakan `/hd`, `/hd 2`, `/hd 4` dengan reply foto, reply teks berisi link gambar, kirim foto dengan caption `/hd`, atau `/hd <link>`.")
+            return
+
+    if isinstance(image_url, str):
+        if not image_url.lower().endswith(VALID_EXT):
+            await event.respond("❌ Link bukan gambar valid. Harus berakhiran .jpg, .jpeg, .png, .gif, atau .webp.")
+            return
+
+    await event.respond(f"🔍 Sedang meng-upscale gambar dengan scale {scale}x...")
+
+    try:
+        # 1. Panggil API untuk hasil upscale
+        api_url = f"https://api.siputzx.my.id/api/iloveimg/upscale?image={image_url}&scale={scale}"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url) as resp:
+                if resp.status != 200:
+                    await event.respond("❌ Upscale API gagal.")
+                    return
+                path = "upscale_result.png"
+                with open(path, "wb") as f:
+                    f.write(await resp.read())
+
+        # 2. Upload hasil ke Catbox
+        catbox_url = await upload_to_catbox(path)
+
+        # 3. Kirim foto langsung + link Catbox
+        await client.send_file(
+            event.chat_id,
+            path,
+            caption=f"✨ HD Upscale {scale}x selesai!\n🔗 {catbox_url}"
+        )
+
+        # 4. Hapus file lokal biar gak penuh
+        os.remove(path)
+
+    except Exception as e:
+        await event.respond(f"❌ Error HD: {e}")
+
+
+
+
+
+VALID_EXT = (".jpg", ".jpeg", ".png", ".gif", ".webp")
+
+async def blurface_handler(event, client):
+    if not event.is_private:
+        return
+
+    me = await client.get_me()
+    if event.sender_id != me.id:
+        return
+
+    image_url = None
+    args = event.raw_text.strip().split(maxsplit=1)
+
+    # 1. /blurface <link gambar>
+    if len(args) > 1:
+        image_url = args[1]
+
+    # 2. Reply pesan
+    elif event.is_reply:
+        reply_msg = await event.get_reply_message()
+        if reply_msg.photo:
+            # download ke path lokal
+            path = await client.download_media(reply_msg)
+            # upload ke catbox
+            async with aiohttp.ClientSession() as session:
+                with open(path, "rb") as f:
+                    form = aiohttp.FormData()
+                    form.add_field("reqtype", "fileupload")
+                    form.add_field("fileToUpload", f, filename=path.split("/")[-1])
+                    resp = await session.post("https://catbox.moe/user/api.php", data=form)
+                    uploaded_url = (await resp.text()).strip()
+            image_url = uploaded_url
+            os.remove(path)
+        elif reply_msg.text and ("http://" in reply_msg.text or "https://" in reply_msg.text):
+            image_url = reply_msg.text.strip()
+        else:
+            await event.respond("❌ Reply hanya bisa ke foto atau teks berisi link gambar.")
+            return
+
+    # 3. Kirim foto dengan caption /blurface
+    elif event.photo and event.raw_text.strip() == "/blurface":
+        path = await client.download_media(event.message)
+        async with aiohttp.ClientSession() as session:
+            with open(path, "rb") as f:
+                form = aiohttp.FormData()
+                form.add_field("reqtype", "fileupload")
+                form.add_field("fileToUpload", f, filename=path.split("/")[-1])
+                resp = await session.post("https://catbox.moe/user/api.php", data=form)
+                uploaded_url = (await resp.text()).strip()
+        image_url = uploaded_url
+        os.remove(path)
+
+    else:
+        await event.respond("❌ Gunakan `/blurface <link gambar>`, reply foto, reply teks berisi link gambar, atau kirim foto dengan caption `/blurface`.")
+        return
+
+    # Validasi link gambar
+    if isinstance(image_url, str):
+        if not image_url.lower().endswith(VALID_EXT):
+            await event.respond("❌ Link bukan gambar valid. Harus berakhiran .jpg, .jpeg, .png, .gif, atau .webp.")
+            return
+
+    await event.respond("🔍 Sedang memproses blur face...")
+
+    try:
+        url = f"https://api.siputzx.my.id/api/iloveimg/blurface?image={image_url}"
+        await client.send_file(event.chat_id, url, caption="😎 Blur face selesai")
+    except Exception as e:
+        await event.respond(f"❌ Error blur face: {e}")
+
+
+
+
+import aiohttp
+import os
+import html
+
+async def brat_handler(event, client):
+    # hanya di chat private
+    if not event.is_private:
+        return
+
+    # hanya userbot sendiri
+    me = await client.get_me()
+    if event.sender_id != me.id:
+        return
+
+    args = event.raw_text.strip().split(maxsplit=1)
+    text = None
+
+    if len(args) > 1:
+        text = args[1]
+    elif event.is_reply:
+        reply_msg = await event.get_reply_message()
+        if reply_msg.text:
+            text = reply_msg.text
+        else:
+            await event.respond("❌ Fitur brat hanya bisa digunakan untuk reply pesan teks, bukan media.")
+            return
+    else:
+        await event.respond("❌ Gunakan `/brat <text>` atau reply pesan teks.")
+        return
+
+    await event.respond("🎀 Sedang membuat brat...")
+
+    try:
+        # 1. Panggil API brat
+        api_url = f"https://api.siputzx.my.id/api/m/brat?text={text}&isAnimated=false&delay=500"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url) as resp:
+                if resp.status != 200:
+                    await event.respond("❌ API brat gagal.")
+                    return
+                path = "brat_result.png"
+                with open(path, "wb") as f:
+                    f.write(await resp.read())
+
+        # 2. Upload hasil ke Catbox
+        async with aiohttp.ClientSession() as session:
+            with open(path, "rb") as f:
+                form = aiohttp.FormData()
+                form.add_field("reqtype", "fileupload")
+                form.add_field("fileToUpload", f, filename=os.path.basename(path))
+                resp = await session.post("https://catbox.moe/user/api.php", data=form)
+                catbox_url = (await resp.text()).strip()
+
+        caption = f"🎀 Brat untuk teks: {html.escape(text)}\n🔗 {catbox_url}"
+
+        # 3. Kirim sebagai foto
+        try:
+            await client.send_file(event.chat_id, path, caption=caption)
+        except Exception as e:
+            await event.respond(f"❌ Error kirim foto brat: {e}")
+
+        # 4. Kirim sebagai stiker
+        try:
+            await client.send_file(event.chat_id, path, force_document=False, reply_to=event.id)
+        except Exception as e:
+            await event.respond(f"❌ Error kirim stiker brat: {e}")
+
+        # 5. Hapus file lokal biar gak penuh
+        os.remove(path)
+
+    except Exception as e:
+        await event.respond(f"❌ Error brat: {e}")
+
+
+
 import random
 
 CECAN_ENDPOINTS = {
@@ -184,6 +441,15 @@ CECAN_ENDPOINTS = {
     "thailand": "https://api.siputzx.my.id/api/r/cecan/thailand",
     "vietnam": "https://api.siputzx.my.id/api/r/cecan/vietnam",
 }
+
+async def upload_to_catbox(path):
+    async with aiohttp.ClientSession() as session:
+        with open(path, "rb") as f:
+            form = aiohttp.FormData()
+            form.add_field("reqtype", "fileupload")
+            form.add_field("fileToUpload", f, filename=os.path.basename(path))
+            resp = await session.post("https://catbox.moe/user/api.php", data=form)
+            return (await resp.text()).strip()
 
 async def cecan_handler(event, client):
     me = await client.get_me()
@@ -203,73 +469,98 @@ async def cecan_handler(event, client):
     await event.respond(f"📸 Sedang mengambil cecan {negara.capitalize()}...")
 
     try:
-        await client.send_file(
-            event.chat_id,
-            url,  # langsung pakai link API
-            caption=f"✨ Cecan {negara.capitalize()}",
-            force_document=False  # penting: kirim sebagai foto
-        )
+        # 1. Ambil hasil dari API
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                if resp.status != 200:
+                    await event.respond("❌ API cecan gagal.")
+                    return
+                path = "cecan_result.jpg"
+                with open(path, "wb") as f:
+                    f.write(await resp.read())
+
+        # 2. Upload ke Catbox
+        catbox_url = await upload_to_catbox(path)
+
+        caption = f"✨ Cecan {negara.capitalize()}\n🔗 {catbox_url}"
+
+        # 3. Kirim sebagai foto
+        try:
+            await client.send_file(event.chat_id, path, caption=caption)
+        except Exception as e:
+            await event.respond(f"❌ Error kirim foto cecan: {e}")
+
+        # 4. Kirim sebagai stiker
+        try:
+            await client.send_file(event.chat_id, path, force_document=False, reply_to=event.id)
+        except Exception as e:
+            await event.respond(f"❌ Error kirim stiker cecan: {e}")
+
+        # 5. Hapus file lokal
+        os.remove(path)
+
     except Exception as e:
         await event.respond(f"❌ Gagal mengambil cecan: {e}")
 
 
 
+import aiohttp
+import html
 
-# === RANDOM SEMUA (CERDAS CERMAT + TEKA-TEKI + TICTACTOE) ===
-async def random_all_handler(event, client):
-    pilihan = random.choice([
-        ("tictactoe", "TicTacToe"),
-        ("tekateki", "Teka-teki"),
-        ("asahotak", "Asah Otak"),
-        ("siapakahaku", "Siapakah Aku"),
-        ("tebakkata", "Tebak Kata"),
-        ("kuis", "Kuis"),
-        ("tebaklagu", "Tebak Lagu"),
-        ("tebakgambar", "Tebak Gambar"),
-        ("lengkapikalimat", "Lengkapi Kalimat"),
-        ("tebaklirik", "Tebak Lirik"),
-        ("caklontong", "Cak Lontong"),
-        ("tebaktebakan", "Tebak Tebakan"),
-        ("math", "Math"),
-        ("tebakhewan", "Tebak Hewan"),
-        ("susunkata", "Susun Kata")
-    ])
+def unescape_html(text: str) -> str:
+    return html.unescape(text or "")
 
-    kode, nama = pilihan
-    await event.respond(f"🎲 Random memilih game: **{nama}**")
+async def dongeng_handler(event, client):
+    if not event.is_private:
+        await event.respond("❌ Fitur dongeng hanya bisa digunakan di chat private.")
+        return
 
-    if kode == "tictactoe":
-        return await tictactoe_handler(event, client)
-    elif kode == "tekateki":
-        return await tekateki_handler(event, client)
-    elif kode == "asahotak":
-        return await asahotak_handler(event, client)
-    elif kode == "siapakahaku":
-        return await siapakahaku_handler(event, client)
-    elif kode == "tebakkata":
-        return await tebakkata_handler(event, client)
-    elif kode == "kuis":
-        return await kuis_handler(event, client)
-    elif kode == "tebaklagu":
-        return await tebaklagu_handler(event, client)
-    elif kode == "tebakgambar":
-        return await tebakgambar_handler(event, client)
-    elif kode == "lengkapikalimat":
-        return await lengkapikalimat_handler(event, client)
-    elif kode == "tebaklirik":
-        return await tebaklirik_handler(event, client)
-    elif kode == "caklontong":
-        return await caklontong_handler(event, client)
-    elif kode == "tebaktebakan":
-        return await tebaktebakan_handler(event, client)
-    elif kode == "math":
-        return await math_handler(event, client)
-    elif kode == "tebakhewan":
-        return await tebakhewan_handler(event, client)
-    elif kode == "susunkata":
-        return await susunkata_handler(event, client)
+    me = await client.get_me()
+    if event.sender_id != me.id:
+        return
+
+    await event.respond("📖 Sedang mengambil dongeng random...")
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get("https://apizell.web.id/random/dongeng") as resp:
+                data = await resp.json()
+
+        title = unescape_html(data.get("title", "Tanpa Judul"))
+        author = unescape_html(data.get("author", "Tidak diketahui"))
+        story_raw = data.get("storyContent", "") or ""
+        story = unescape_html(story_raw)
+        source = unescape_html(data.get("creator", "Zell API"))
+        image = data.get("image", "")
+
+        # caption singkat untuk media (maks 1024 karakter)
+        short_caption = f"📖 <b>{title}</b>\n👤 Penulis: {author}"
+
+        # kirim foto dengan caption singkat
+        if image:
+            await client.send_file(
+                event.chat_id,
+                image,
+                caption=short_caption,
+                parse_mode="html"
+            )
+        else:
+            await event.respond(short_caption, parse_mode="html")
+
+        # kirim isi cerita terpisah (potongan 4096 karakter)
+        for i in range(0, len(story), 4096):
+            chunk = story[i:i+4096]
+            await event.respond(chunk, parse_mode="html")
+
+        # kirim sumber terakhir
+        await event.respond(f"Sumber: {source}", parse_mode="html")
+
+    except Exception as e:
+        await event.respond(f"❌ Gagal mengambil dongeng: {unescape_html(str(e))}", parse_mode="html")
 
 
+
+import random
 
 # === RANDOM CERDAS CERMAT ===
 async def random_cc_handler(event, client):
@@ -311,6 +602,1845 @@ async def random_cc_handler(event, client):
         return await cctik_handler(event, client)
 
 
+# === RANDOM TEKA-TEKI ===
+async def random_teka_handler(event, client):
+    pilihan = random.choice([
+        ("tekateki", "Teka-teki"),
+        ("asahotak", "Asah Otak"),
+        ("siapakahaku", "Siapakah Aku"),
+        ("tebakkata", "Tebak Kata"),
+        ("kuis", "Kuis"),
+        ("tebaklagu", "Tebak Lagu"),
+        ("tebakgambar", "Tebak Gambar"),
+        ("lengkapikalimat", "Lengkapi Kalimat"),
+        ("tebaklirik", "Tebak Lirik"),
+        ("caklontong", "Cak Lontong"),
+        ("tebaktebakan", "Tebak Tebakan"),
+        ("math", "Math"),
+        ("tebakhewan", "Tebak Hewan"),
+        ("susunkata", "Susun Kata")
+    ])
+
+    kode, nama = pilihan
+    await event.respond(f"🎲 Random memilih game: **{nama}**")
+
+    if kode == "tekateki":
+        return await tekateki_handler(event, client)
+    elif kode == "asahotak":
+        return await asahotak_handler(event, client)
+    elif kode == "siapakahaku":
+        return await siapakahaku_handler(event, client)
+    elif kode == "tebakkata":
+        return await tebakkata_handler(event, client)
+    elif kode == "kuis":
+        return await kuis_handler(event, client)
+    elif kode == "tebaklagu":
+        return await tebaklagu_handler(event, client)
+    elif kode == "tebakgambar":
+        return await tebakgambar_handler(event, client)
+    elif kode == "lengkapikalimat":
+        return await lengkapikalimat_handler(event, client)
+    elif kode == "tebaklirik":
+        return await tebaklirik_handler(event, client)
+    elif kode == "caklontong":
+        return await caklontong_handler(event, client)
+    elif kode == "tebaktebakan":
+        return await tebaktebakan_handler(event, client)
+    elif kode == "math":
+        return await math_handler(event, client)
+    elif kode == "tebakhewan":
+        return await tebakhewan_handler(event, client)
+    elif kode == "susunkata":
+        return await susunkata_handler(event, client)
+
+
+# === RANDOM SEMUA (CERDAS CERMAT + TEKA-TEKI + TICTACTOE) ===
+async def random_all_handler(event, client):
+    pilihan = random.choice([
+        ("ccmath", "Cerdas Cermat Matematika"),
+        ("ccipa", "Cerdas Cermat IPA"),
+        ("ccips", "Cerdas Cermat IPS"),
+        ("ccbindo", "Cerdas Cermat Bindo"),
+        ("ccbing", "Cerdas Cermat Bing"),
+        ("ccjawa", "Cerdas Cermat Jawa"),
+        ("ccpai", "Cerdas Cermat PAI"),
+        ("ccpkn", "Cerdas Cermat PKN"),
+        ("ccpenjas", "Cerdas Cermat Penjas"),
+        ("cctik", "Cerdas Cermat TIK"),
+        ("tictactoe", "TicTacToe"),
+        ("tekateki", "Teka-teki"),
+        ("asahotak", "Asah Otak"),
+        ("siapakahaku", "Siapakah Aku"),
+        ("tebakkata", "Tebak Kata"),
+        ("kuis", "Kuis"),
+        ("tebaklagu", "Tebak Lagu"),
+        ("tebakgambar", "Tebak Gambar"),
+        ("lengkapikalimat", "Lengkapi Kalimat"),
+        ("tebaklirik", "Tebak Lirik"),
+        ("caklontong", "Cak Lontong"),
+        ("tebaktebakan", "Tebak Tebakan"),
+        ("math", "Math"),
+        ("tebakhewan", "Tebak Hewan"),
+        ("susunkata", "Susun Kata")
+    ])
+
+    kode, nama = pilihan
+    await event.respond(f"🎲 Random memilih game: **{nama}**")
+
+    if kode == "ccmath":
+        return await ccmath_handler(event, client)
+    elif kode == "ccipa":
+        return await ccipa_handler(event, client)
+    elif kode == "ccips":
+        return await ccips_handler(event, client)
+    elif kode == "ccbindo":
+        return await ccbindo_handler(event, client)
+    elif kode == "ccbing":
+        return await ccbing_handler(event, client)
+    elif kode == "ccjawa":
+        return await ccjawa_handler(event, client)
+    elif kode == "ccpai":
+        return await ccpai_handler(event, client)
+    elif kode == "ccpkn":
+        return await ccpkn_handler(event, client)
+    elif kode == "ccpenjas":
+        return await ccpenjas_handler(event, client)
+    elif kode == "cctik":
+        return await cctik_handler(event, client)
+    elif kode == "tictactoe":
+        return await tictactoe_handler(event, client)
+    elif kode == "tekateki":
+        return await tekateki_handler(event, client)
+    elif kode == "asahotak":
+        return await asahotak_handler(event, client)
+    elif kode == "siapakahaku":
+        return await siapakahaku_handler(event, client)
+    elif kode == "tebakkata":
+        return await tebakkata_handler(event, client)
+    elif kode == "kuis":
+        return await kuis_handler(event, client)
+    elif kode == "tebaklagu":
+        return await tebaklagu_handler(event, client)
+    elif kode == "tebakgambar":
+        return await tebakgambar_handler(event, client)
+    elif kode == "lengkapikalimat":
+        return await lengkapikalimat_handler(event, client)
+    elif kode == "tebaklirik":
+        return await tebaklirik_handler(event, client)
+    elif kode == "caklontong":
+        return await caklontong_handler(event, client)
+    elif kode == "tebaktebakan":
+        return await tebaktebakan_handler(event, client)
+    elif kode == "math":
+        return await math_handler(event, client)
+    elif kode == "tebakhewan":
+        return await tebakhewan_handler(event, client)
+    elif kode == "susunkata":
+        return await susunkata_handler(event, client)
+
+
+
+
+import random
+
+# === CLASS CERDAS CERMAT TIK ===
+class CerdasCermatTIKGame:
+    def __init__(self, player_x):
+        self.playerX = player_x
+        self.playerO = None
+        self.currentTurn = player_x
+        self.winner = None
+        self.question = None
+        self.choices = {}
+        self.answer = None
+        self.names = {player_x: "Pembuat room"}
+        self.timeout_task = None
+        self.answered = {}
+
+    async def load_question(self):
+        import requests
+        url = "https://api.siputzx.my.id/api/games/cc-sd?matapelajaran=tik&jumlahsoal=5"
+        resp = requests.get(url)
+        data = resp.json()
+        soal_list = data["data"]["soal"]
+        soal = random.choice(soal_list)  # ambil 1 soal random
+
+        self.question = soal["pertanyaan"]
+        # flatten semua_jawaban jadi dict {huruf: teks}
+        choices = {}
+        for opsi in soal["semua_jawaban"]:
+            for huruf, teks in opsi.items():
+                choices[huruf.upper()] = teks
+        self.choices = choices
+        self.answer = soal["jawaban_benar"].lower().strip()
+
+
+# === STATE GAME PER CHAT ===
+def _ensure_cctik_state(client, chat_id):
+    if not hasattr(client, "cctik_rooms"):
+        client.cctik_rooms = {}
+    if chat_id not in client.cctik_rooms:
+        client.cctik_rooms[chat_id] = {}
+
+
+# === HANDLER BUAT / JOIN ROOM ===
+async def cctik_handler(event, client):
+    chat_id = event.chat_id
+    sender = event.sender_id
+    _ensure_cctik_state(client, chat_id)
+
+    # Cek apakah sudah ada room PLAYING
+    for r in client.cctik_rooms[chat_id].values():
+        if r["state"] == "PLAYING":
+            await event.respond("❌ Sudah ada Cerdas Cermat TIK berjalan.\nGunakan /nyerah untuk menyerah.")
+            return
+
+    # Cari room waiting
+    waiting_room = None
+    for r in client.cctik_rooms[chat_id].values():
+        if r["state"] == "WAITING":
+            waiting_room = r
+            break
+
+    if waiting_room:
+        if sender == waiting_room["playerX"]:
+            await event.respond("❌ Kamu sudah membuat room ini. Tunggu partner join.")
+            return
+
+        # Join sebagai Partner
+        waiting_room["game"].playerO = sender
+        waiting_room["playerO"] = sender
+        waiting_room["state"] = "PLAYING"
+        waiting_room["game"].names[sender] = "Partner"
+
+        # Load soal
+        await waiting_room["game"].load_question()
+        soal = waiting_room["game"].question
+        choices = waiting_room["game"].choices
+
+        msg = (f"Partner ditemukan!\nRoom ID: {waiting_room['id']}\n\n"
+               f"💻 Cerdas Cermat TIK:\n**{soal}**\n\n"
+               + "\n".join([f"{huruf}. {teks}" for huruf, teks in choices.items()])
+               + "\n\n⏱ Waktu menjawab: 1 menit\nJawab hanya dengan `a`, `b`, `c`, atau `d`.")
+        await event.respond(msg)
+
+        # Set timeout 1 menit
+        async def timeout_answer():
+            await asyncio.sleep(60)
+            if waiting_room["state"] == "PLAYING":
+                waiting_room["state"] = "FINISHED"
+                await event.respond(
+                    f"⏰ Waktu habis!\nJawaban: **{waiting_room['game'].answer.upper()}**"
+                )
+                try: del client.cctik_rooms[chat_id][waiting_room["id"]]
+                except: pass
+
+        waiting_room["game"].timeout_task = asyncio.create_task(timeout_answer())
+
+    else:
+        # Buat room baru
+        room_id = f"cctik-{chat_id}-{int(datetime.now().timestamp())}"
+        game = CerdasCermatTIKGame(sender)
+        new_room = {"id": room_id,"game": game,"playerX": sender,
+                    "playerO": None,"state": "WAITING"}
+        client.cctik_rooms[chat_id][room_id] = new_room
+        await event.respond("Menunggu partner join...\nGunakan /cctik untuk join.")
+
+
+# === HANDLER JAWABAN ===
+async def cctik_answer_handler(event, client):
+    chat_id = event.chat_id
+    text = event.raw_text.strip().lower()
+    _ensure_cctik_state(client, chat_id)
+
+    room = None
+    for r in client.cctik_rooms[chat_id].values():
+        if r["state"] == "PLAYING":
+            room = r
+            break
+    if not room:
+        return
+
+    game = room["game"]
+
+    # Hanya playerX/playerO yang boleh menjawab
+    if event.sender_id not in (room["playerX"], room["playerO"]):
+        return
+
+    # Jawaban hanya a, b, c, d
+    if text not in ["a", "b", "c", "d"]:
+        return
+
+    # Cek apakah pemain sudah pernah menjawab
+    if event.sender_id in game.answered:
+        await event.reply("❌ Kamu sudah menjawab sekali, tidak bisa menjawab lagi.")
+        return
+
+    # Tandai pemain sudah menjawab
+    game.answered[event.sender_id] = text
+
+    # Jika benar → langsung menang
+    if text == game.answer:
+        room["state"] = "FINISHED"
+        if game.timeout_task:
+            game.timeout_task.cancel()
+        winner_label = game.names.get(event.sender_id, str(event.sender_id))
+        await event.reply(
+            f"✅ Benar!\nJawaban: **{game.answer.upper()}**\n🏆 Pemenang: <b>{winner_label}</b>",
+            parse_mode="html"
+        )
+        try: del client.cctik_rooms[chat_id][room["id"]]
+        except: pass
+        return
+
+    # Jika salah → kirim pesan salah sambil reply
+    await event.reply(f"❌ Jawaban salah: {text.upper()}", reply_to=event.message.id)
+
+    # Jika kedua pemain sudah menjawab (dan tidak ada yang benar) → akhiri room
+    pX_done = room["playerX"] in game.answered
+    pO_done = room["playerO"] in game.answered
+    if pX_done and pO_done:
+        room["state"] = "FINISHED"
+        if game.timeout_task:
+            game.timeout_task.cancel()
+        await event.respond(
+            f"⏹️ Cerdas Cermat TIK berakhir!\nJawaban yang benar: **{game.answer.upper()}**"
+        )
+        try: del client.cctik_rooms[chat_id][room["id"]]
+        except: pass
+
+
+
+import random
+
+# === CLASS CERDAS CERMAT PENJAS ===
+class CerdasCermatPenjasGame:
+    def __init__(self, player_x):
+        self.playerX = player_x
+        self.playerO = None
+        self.currentTurn = player_x
+        self.winner = None
+        self.question = None
+        self.choices = {}
+        self.answer = None
+        self.names = {player_x: "Pembuat room"}
+        self.timeout_task = None
+        self.answered = {}
+
+    async def load_question(self):
+        import requests
+        url = "https://api.siputzx.my.id/api/games/cc-sd?matapelajaran=penjas&jumlahsoal=5"
+        resp = requests.get(url)
+        data = resp.json()
+        soal_list = data["data"]["soal"]
+        soal = random.choice(soal_list)  # ambil 1 soal random
+
+        self.question = soal["pertanyaan"]
+        # flatten semua_jawaban jadi dict {huruf: teks}
+        choices = {}
+        for opsi in soal["semua_jawaban"]:
+            for huruf, teks in opsi.items():
+                choices[huruf.upper()] = teks
+        self.choices = choices
+        self.answer = soal["jawaban_benar"].lower().strip()
+
+
+# === STATE GAME PER CHAT ===
+def _ensure_ccpenjas_state(client, chat_id):
+    if not hasattr(client, "ccpenjas_rooms"):
+        client.ccpenjas_rooms = {}
+    if chat_id not in client.ccpenjas_rooms:
+        client.ccpenjas_rooms[chat_id] = {}
+
+
+# === HANDLER BUAT / JOIN ROOM ===
+async def ccpenjas_handler(event, client):
+    chat_id = event.chat_id
+    sender = event.sender_id
+    _ensure_ccpenjas_state(client, chat_id)
+
+    # Cek apakah sudah ada room PLAYING
+    for r in client.ccpenjas_rooms[chat_id].values():
+        if r["state"] == "PLAYING":
+            await event.respond("❌ Sudah ada Cerdas Cermat Penjas berjalan.\nGunakan /nyerah untuk menyerah.")
+            return
+
+    # Cari room waiting
+    waiting_room = None
+    for r in client.ccpenjas_rooms[chat_id].values():
+        if r["state"] == "WAITING":
+            waiting_room = r
+            break
+
+    if waiting_room:
+        if sender == waiting_room["playerX"]:
+            await event.respond("❌ Kamu sudah membuat room ini. Tunggu partner join.")
+            return
+
+        # Join sebagai Partner
+        waiting_room["game"].playerO = sender
+        waiting_room["playerO"] = sender
+        waiting_room["state"] = "PLAYING"
+        waiting_room["game"].names[sender] = "Partner"
+
+        # Load soal
+        await waiting_room["game"].load_question()
+        soal = waiting_room["game"].question
+        choices = waiting_room["game"].choices
+
+        msg = (f"Partner ditemukan!\nRoom ID: {waiting_room['id']}\n\n"
+               f"🏃‍♂️ Cerdas Cermat Penjas:\n**{soal}**\n\n"
+               + "\n".join([f"{huruf}. {teks}" for huruf, teks in choices.items()])
+               + "\n\n⏱ Waktu menjawab: 1 menit\nJawab hanya dengan `a`, `b`, `c`, atau `d`.")
+        await event.respond(msg)
+
+        # Set timeout 1 menit
+        async def timeout_answer():
+            await asyncio.sleep(60)
+            if waiting_room["state"] == "PLAYING":
+                waiting_room["state"] = "FINISHED"
+                await event.respond(
+                    f"⏰ Waktu habis!\nJawaban: **{waiting_room['game'].answer.upper()}**"
+                )
+                try: del client.ccpenjas_rooms[chat_id][waiting_room["id"]]
+                except: pass
+
+        waiting_room["game"].timeout_task = asyncio.create_task(timeout_answer())
+
+    else:
+        # Buat room baru
+        room_id = f"ccpenjas-{chat_id}-{int(datetime.now().timestamp())}"
+        game = CerdasCermatPenjasGame(sender)
+        new_room = {"id": room_id,"game": game,"playerX": sender,
+                    "playerO": None,"state": "WAITING"}
+        client.ccpenjas_rooms[chat_id][room_id] = new_room
+        await event.respond("Menunggu partner join...\nGunakan /ccpenjas untuk join.")
+
+
+# === HANDLER JAWABAN ===
+async def ccpenjas_answer_handler(event, client):
+    chat_id = event.chat_id
+    text = event.raw_text.strip().lower()
+    _ensure_ccpenjas_state(client, chat_id)
+
+    room = None
+    for r in client.ccpenjas_rooms[chat_id].values():
+        if r["state"] == "PLAYING":
+            room = r
+            break
+    if not room:
+        return
+
+    game = room["game"]
+
+    # Hanya playerX/playerO yang boleh menjawab
+    if event.sender_id not in (room["playerX"], room["playerO"]):
+        return
+
+    # Jawaban hanya a, b, c, d
+    if text not in ["a", "b", "c", "d"]:
+        return
+
+    # Cek apakah pemain sudah pernah menjawab
+    if event.sender_id in game.answered:
+        await event.reply("❌ Kamu sudah menjawab sekali, tidak bisa menjawab lagi.")
+        return
+
+    # Tandai pemain sudah menjawab
+    game.answered[event.sender_id] = text
+
+    # Jika benar → langsung menang
+    if text == game.answer:
+        room["state"] = "FINISHED"
+        if game.timeout_task:
+            game.timeout_task.cancel()
+        winner_label = game.names.get(event.sender_id, str(event.sender_id))
+        await event.reply(
+            f"✅ Benar!\nJawaban: **{game.answer.upper()}**\n🏆 Pemenang: <b>{winner_label}</b>",
+            parse_mode="html"
+        )
+        try: del client.ccpenjas_rooms[chat_id][room["id"]]
+        except: pass
+        return
+
+    # Jika salah → kirim pesan salah sambil reply
+    await event.reply(f"❌ Jawaban salah: {text.upper()}", reply_to=event.message.id)
+
+    # Jika kedua pemain sudah menjawab (dan tidak ada yang benar) → akhiri room
+    pX_done = room["playerX"] in game.answered
+    pO_done = room["playerO"] in game.answered
+    if pX_done and pO_done:
+        room["state"] = "FINISHED"
+        if game.timeout_task:
+            game.timeout_task.cancel()
+        await event.respond(
+            f"⏹️ Cerdas Cermat Penjas berakhir!\nJawaban yang benar: **{game.answer.upper()}**"
+        )
+        try: del client.ccpenjas_rooms[chat_id][room["id"]]
+        except: pass
+
+
+
+
+import random
+
+# === CLASS CERDAS CERMAT PKN ===
+class CerdasCermatPKNGame:
+    def __init__(self, player_x):
+        self.playerX = player_x
+        self.playerO = None
+        self.currentTurn = player_x
+        self.winner = None
+        self.question = None
+        self.choices = {}
+        self.answer = None
+        self.names = {player_x: "Pembuat room"}
+        self.timeout_task = None
+        self.answered = {}
+
+    async def load_question(self):
+        import requests
+        url = "https://api.siputzx.my.id/api/games/cc-sd?matapelajaran=pkn&jumlahsoal=5"
+        resp = requests.get(url)
+        data = resp.json()
+        soal_list = data["data"]["soal"]
+        soal = random.choice(soal_list)  # ambil 1 soal random
+
+        self.question = soal["pertanyaan"]
+        # flatten semua_jawaban jadi dict {huruf: teks}
+        choices = {}
+        for opsi in soal["semua_jawaban"]:
+            for huruf, teks in opsi.items():
+                choices[huruf.upper()] = teks
+        self.choices = choices
+        self.answer = soal["jawaban_benar"].lower().strip()
+
+
+# === STATE GAME PER CHAT ===
+def _ensure_ccpkn_state(client, chat_id):
+    if not hasattr(client, "ccpkn_rooms"):
+        client.ccpkn_rooms = {}
+    if chat_id not in client.ccpkn_rooms:
+        client.ccpkn_rooms[chat_id] = {}
+
+
+# === HANDLER BUAT / JOIN ROOM ===
+async def ccpkn_handler(event, client):
+    chat_id = event.chat_id
+    sender = event.sender_id
+    _ensure_ccpkn_state(client, chat_id)
+
+    # Cek apakah sudah ada room PLAYING
+    for r in client.ccpkn_rooms[chat_id].values():
+        if r["state"] == "PLAYING":
+            await event.respond("❌ Sudah ada Cerdas Cermat PKN berjalan.\nGunakan /nyerah untuk menyerah.")
+            return
+
+    # Cari room waiting
+    waiting_room = None
+    for r in client.ccpkn_rooms[chat_id].values():
+        if r["state"] == "WAITING":
+            waiting_room = r
+            break
+
+    if waiting_room:
+        if sender == waiting_room["playerX"]:
+            await event.respond("❌ Kamu sudah membuat room ini. Tunggu partner join.")
+            return
+
+        # Join sebagai Partner
+        waiting_room["game"].playerO = sender
+        waiting_room["playerO"] = sender
+        waiting_room["state"] = "PLAYING"
+        waiting_room["game"].names[sender] = "Partner"
+
+        # Load soal
+        await waiting_room["game"].load_question()
+        soal = waiting_room["game"].question
+        choices = waiting_room["game"].choices
+
+        msg = (f"Partner ditemukan!\nRoom ID: {waiting_room['id']}\n\n"
+               f"🇮🇩 Cerdas Cermat PKN:\n**{soal}**\n\n"
+               + "\n".join([f"{huruf}. {teks}" for huruf, teks in choices.items()])
+               + "\n\n⏱ Waktu menjawab: 1 menit\nJawab hanya dengan `a`, `b`, `c`, atau `d`.")
+        await event.respond(msg)
+
+        # Set timeout 1 menit
+        async def timeout_answer():
+            await asyncio.sleep(60)
+            if waiting_room["state"] == "PLAYING":
+                waiting_room["state"] = "FINISHED"
+                await event.respond(
+                    f"⏰ Waktu habis!\nJawaban: **{waiting_room['game'].answer.upper()}**"
+                )
+                try: del client.ccpkn_rooms[chat_id][waiting_room["id"]]
+                except: pass
+
+        waiting_room["game"].timeout_task = asyncio.create_task(timeout_answer())
+
+    else:
+        # Buat room baru
+        room_id = f"ccpkn-{chat_id}-{int(datetime.now().timestamp())}"
+        game = CerdasCermatPKNGame(sender)
+        new_room = {"id": room_id,"game": game,"playerX": sender,
+                    "playerO": None,"state": "WAITING"}
+        client.ccpkn_rooms[chat_id][room_id] = new_room
+        await event.respond("Menunggu partner join...\nGunakan /ccpkn untuk join.")
+
+
+# === HANDLER JAWABAN ===
+async def ccpkn_answer_handler(event, client):
+    chat_id = event.chat_id
+    text = event.raw_text.strip().lower()
+    _ensure_ccpkn_state(client, chat_id)
+
+    room = None
+    for r in client.ccpkn_rooms[chat_id].values():
+        if r["state"] == "PLAYING":
+            room = r
+            break
+    if not room:
+        return
+
+    game = room["game"]
+
+    # Hanya playerX/playerO yang boleh menjawab
+    if event.sender_id not in (room["playerX"], room["playerO"]):
+        return
+
+    # Jawaban hanya a, b, c, d
+    if text not in ["a", "b", "c", "d"]:
+        return
+
+    # Cek apakah pemain sudah pernah menjawab
+    if event.sender_id in game.answered:
+        await event.reply("❌ Kamu sudah menjawab sekali, tidak bisa menjawab lagi.")
+        return
+
+    # Tandai pemain sudah menjawab
+    game.answered[event.sender_id] = text
+
+    # Jika benar → langsung menang
+    if text == game.answer:
+        room["state"] = "FINISHED"
+        if game.timeout_task:
+            game.timeout_task.cancel()
+        winner_label = game.names.get(event.sender_id, str(event.sender_id))
+        await event.reply(
+            f"✅ Benar!\nJawaban: **{game.answer.upper()}**\n🏆 Pemenang: <b>{winner_label}</b>",
+            parse_mode="html"
+        )
+        try: del client.ccpkn_rooms[chat_id][room["id"]]
+        except: pass
+        return
+
+    # Jika salah → kirim pesan salah sambil reply
+    await event.reply(f"❌ Jawaban salah: {text.upper()}", reply_to=event.message.id)
+
+    # Jika kedua pemain sudah menjawab (dan tidak ada yang benar) → akhiri room
+    pX_done = room["playerX"] in game.answered
+    pO_done = room["playerO"] in game.answered
+    if pX_done and pO_done:
+        room["state"] = "FINISHED"
+        if game.timeout_task:
+            game.timeout_task.cancel()
+        await event.respond(
+            f"⏹️ Cerdas Cermat PKN berakhir!\nJawaban yang benar: **{game.answer.upper()}**"
+        )
+        try: del client.ccpkn_rooms[chat_id][room["id"]]
+        except: pass
+
+
+
+
+import random
+
+# === CLASS CERDAS CERMAT PAI ===
+class CerdasCermatPAIGame:
+    def __init__(self, player_x):
+        self.playerX = player_x
+        self.playerO = None
+        self.currentTurn = player_x
+        self.winner = None
+        self.question = None
+        self.choices = {}
+        self.answer = None
+        self.names = {player_x: "Pembuat room"}
+        self.timeout_task = None
+        self.answered = {}
+
+    async def load_question(self):
+        import requests
+        url = "https://api.siputzx.my.id/api/games/cc-sd?matapelajaran=pai&jumlahsoal=5"
+        resp = requests.get(url)
+        data = resp.json()
+        soal_list = data["data"]["soal"]
+        soal = random.choice(soal_list)  # ambil 1 soal random
+
+        self.question = soal["pertanyaan"]
+        # flatten semua_jawaban jadi dict {huruf: teks}
+        choices = {}
+        for opsi in soal["semua_jawaban"]:
+            for huruf, teks in opsi.items():
+                choices[huruf.upper()] = teks
+        self.choices = choices
+        self.answer = soal["jawaban_benar"].lower().strip()
+
+
+# === STATE GAME PER CHAT ===
+def _ensure_ccpai_state(client, chat_id):
+    if not hasattr(client, "ccpai_rooms"):
+        client.ccpai_rooms = {}
+    if chat_id not in client.ccpai_rooms:
+        client.ccpai_rooms[chat_id] = {}
+
+
+# === HANDLER BUAT / JOIN ROOM ===
+async def ccpai_handler(event, client):
+    chat_id = event.chat_id
+    sender = event.sender_id
+    _ensure_ccpai_state(client, chat_id)
+
+    # Cek apakah sudah ada room PLAYING
+    for r in client.ccpai_rooms[chat_id].values():
+        if r["state"] == "PLAYING":
+            await event.respond("❌ Sudah ada Cerdas Cermat PAI berjalan.\nGunakan /nyerah untuk menyerah.")
+            return
+
+    # Cari room waiting
+    waiting_room = None
+    for r in client.ccpai_rooms[chat_id].values():
+        if r["state"] == "WAITING":
+            waiting_room = r
+            break
+
+    if waiting_room:
+        if sender == waiting_room["playerX"]:
+            await event.respond("❌ Kamu sudah membuat room ini. Tunggu partner join.")
+            return
+
+        # Join sebagai Partner
+        waiting_room["game"].playerO = sender
+        waiting_room["playerO"] = sender
+        waiting_room["state"] = "PLAYING"
+        waiting_room["game"].names[sender] = "Partner"
+
+        # Load soal
+        await waiting_room["game"].load_question()
+        soal = waiting_room["game"].question
+        choices = waiting_room["game"].choices
+
+        msg = (f"Partner ditemukan!\nRoom ID: {waiting_room['id']}\n\n"
+               f"☪️ Cerdas Cermat PAI:\n**{soal}**\n\n"
+               + "\n".join([f"{huruf}. {teks}" for huruf, teks in choices.items()])
+               + "\n\n⏱ Waktu menjawab: 1 menit\nJawab hanya dengan `a`, `b`, `c`, atau `d`.")
+        await event.respond(msg)
+
+        # Set timeout 1 menit
+        async def timeout_answer():
+            await asyncio.sleep(60)
+            if waiting_room["state"] == "PLAYING":
+                waiting_room["state"] = "FINISHED"
+                await event.respond(
+                    f"⏰ Waktu habis!\nJawaban: **{waiting_room['game'].answer.upper()}**"
+                )
+                try: del client.ccpai_rooms[chat_id][waiting_room["id"]]
+                except: pass
+
+        waiting_room["game"].timeout_task = asyncio.create_task(timeout_answer())
+
+    else:
+        # Buat room baru
+        room_id = f"ccpai-{chat_id}-{int(datetime.now().timestamp())}"
+        game = CerdasCermatPAIGame(sender)
+        new_room = {"id": room_id,"game": game,"playerX": sender,
+                    "playerO": None,"state": "WAITING"}
+        client.ccpai_rooms[chat_id][room_id] = new_room
+        await event.respond("Menunggu partner join...\nGunakan /ccpai untuk join.")
+
+
+# === HANDLER JAWABAN ===
+async def ccpai_answer_handler(event, client):
+    chat_id = event.chat_id
+    text = event.raw_text.strip().lower()
+    _ensure_ccpai_state(client, chat_id)
+
+    room = None
+    for r in client.ccpai_rooms[chat_id].values():
+        if r["state"] == "PLAYING":
+            room = r
+            break
+    if not room:
+        return
+
+    game = room["game"]
+
+    # Hanya playerX/playerO yang boleh menjawab
+    if event.sender_id not in (room["playerX"], room["playerO"]):
+        return
+
+    # Jawaban hanya a, b, c, d
+    if text not in ["a", "b", "c", "d"]:
+        return
+
+    # Cek apakah pemain sudah pernah menjawab
+    if event.sender_id in game.answered:
+        await event.reply("❌ Kamu sudah menjawab sekali, tidak bisa menjawab lagi.")
+        return
+
+    # Tandai pemain sudah menjawab
+    game.answered[event.sender_id] = text
+
+    # Jika benar → langsung menang
+    if text == game.answer:
+        room["state"] = "FINISHED"
+        if game.timeout_task:
+            game.timeout_task.cancel()
+        winner_label = game.names.get(event.sender_id, str(event.sender_id))
+        await event.reply(
+            f"✅ Benar!\nJawaban: **{game.answer.upper()}**\n🏆 Pemenang: <b>{winner_label}</b>",
+            parse_mode="html"
+        )
+        try: del client.ccpai_rooms[chat_id][room["id"]]
+        except: pass
+        return
+
+    # Jika salah → kirim pesan salah sambil reply
+    await event.reply(f"❌ Jawaban salah: {text.upper()}", reply_to=event.message.id)
+
+    # Jika kedua pemain sudah menjawab (dan tidak ada yang benar) → akhiri room
+    pX_done = room["playerX"] in game.answered
+    pO_done = room["playerO"] in game.answered
+    if pX_done and pO_done:
+        room["state"] = "FINISHED"
+        if game.timeout_task:
+            game.timeout_task.cancel()
+        await event.respond(
+            f"⏹️ Cerdas Cermat PAI berakhir!\nJawaban yang benar: **{game.answer.upper()}**"
+        )
+        try: del client.ccpai_rooms[chat_id][room["id"]]
+        except: pass
+
+
+
+import random
+
+# === CLASS CERDAS CERMAT JAWA ===
+class CerdasCermatJawaGame:
+    def __init__(self, player_x):
+        self.playerX = player_x
+        self.playerO = None
+        self.currentTurn = player_x
+        self.winner = None
+        self.question = None
+        self.choices = {}
+        self.answer = None
+        self.names = {player_x: "Pembuat room"}
+        self.timeout_task = None
+        self.answered = {}
+
+    async def load_question(self):
+        import requests
+        url = "https://api.siputzx.my.id/api/games/cc-sd?matapelajaran=jawa&jumlahsoal=5"
+        resp = requests.get(url)
+        data = resp.json()
+        soal_list = data["data"]["soal"]
+        soal = random.choice(soal_list)  # ambil 1 soal random
+
+        self.question = soal["pertanyaan"]
+        # flatten semua_jawaban jadi dict {huruf: teks}
+        choices = {}
+        for opsi in soal["semua_jawaban"]:
+            for huruf, teks in opsi.items():
+                choices[huruf.upper()] = teks
+        self.choices = choices
+        self.answer = soal["jawaban_benar"].lower().strip()
+
+
+# === STATE GAME PER CHAT ===
+def _ensure_ccjawa_state(client, chat_id):
+    if not hasattr(client, "ccjawa_rooms"):
+        client.ccjawa_rooms = {}
+    if chat_id not in client.ccjawa_rooms:
+        client.ccjawa_rooms[chat_id] = {}
+
+
+# === HANDLER BUAT / JOIN ROOM ===
+async def ccjawa_handler(event, client):
+    chat_id = event.chat_id
+    sender = event.sender_id
+    _ensure_ccjawa_state(client, chat_id)
+
+    # Cek apakah sudah ada room PLAYING
+    for r in client.ccjawa_rooms[chat_id].values():
+        if r["state"] == "PLAYING":
+            await event.respond("❌ Sudah ada Cerdas Cermat Jawa berjalan.\nGunakan /nyerah untuk menyerah.")
+            return
+
+    # Cari room waiting
+    waiting_room = None
+    for r in client.ccjawa_rooms[chat_id].values():
+        if r["state"] == "WAITING":
+            waiting_room = r
+            break
+
+    if waiting_room:
+        if sender == waiting_room["playerX"]:
+            await event.respond("❌ Kamu sudah membuat room ini. Tunggu partner join.")
+            return
+
+        # Join sebagai Partner
+        waiting_room["game"].playerO = sender
+        waiting_room["playerO"] = sender
+        waiting_room["state"] = "PLAYING"
+        waiting_room["game"].names[sender] = "Partner"
+
+        # Load soal
+        await waiting_room["game"].load_question()
+        soal = waiting_room["game"].question
+        choices = waiting_room["game"].choices
+
+        msg = (f"Partner ditemukan!\nRoom ID: {waiting_room['id']}\n\n"
+               f"📝 Cerdas Cermat Jawa:\n**{soal}**\n\n"
+               + "\n".join([f"{huruf}. {teks}" for huruf, teks in choices.items()])
+               + "\n\n⏱ Waktu menjawab: 1 menit\nJawab hanya dengan `a`, `b`, `c`, atau `d`.")
+        await event.respond(msg)
+
+        # Set timeout 1 menit
+        async def timeout_answer():
+            await asyncio.sleep(60)
+            if waiting_room["state"] == "PLAYING":
+                waiting_room["state"] = "FINISHED"
+                await event.respond(
+                    f"⏰ Waktu habis!\nJawaban: **{waiting_room['game'].answer.upper()}**"
+                )
+                try: del client.ccjawa_rooms[chat_id][waiting_room["id"]]
+                except: pass
+
+        waiting_room["game"].timeout_task = asyncio.create_task(timeout_answer())
+
+    else:
+        # Buat room baru
+        room_id = f"ccjawa-{chat_id}-{int(datetime.now().timestamp())}"
+        game = CerdasCermatJawaGame(sender)
+        new_room = {"id": room_id,"game": game,"playerX": sender,
+                    "playerO": None,"state": "WAITING"}
+        client.ccjawa_rooms[chat_id][room_id] = new_room
+        await event.respond("Menunggu partner join...\nGunakan /ccjawa untuk join.")
+
+
+# === HANDLER JAWABAN ===
+async def ccjawa_answer_handler(event, client):
+    chat_id = event.chat_id
+    text = event.raw_text.strip().lower()
+    _ensure_ccjawa_state(client, chat_id)
+
+    room = None
+    for r in client.ccjawa_rooms[chat_id].values():
+        if r["state"] == "PLAYING":
+            room = r
+            break
+    if not room:
+        return
+
+    game = room["game"]
+
+    # Hanya playerX/playerO yang boleh menjawab
+    if event.sender_id not in (room["playerX"], room["playerO"]):
+        return
+
+    # Jawaban hanya a, b, c, d
+    if text not in ["a", "b", "c", "d"]:
+        return
+
+    # Cek apakah pemain sudah pernah menjawab
+    if event.sender_id in game.answered:
+        await event.reply("❌ Kamu sudah menjawab sekali, tidak bisa menjawab lagi.")
+        return
+
+    # Tandai pemain sudah menjawab
+    game.answered[event.sender_id] = text
+
+    # Jika benar → langsung menang
+    if text == game.answer:
+        room["state"] = "FINISHED"
+        if game.timeout_task:
+            game.timeout_task.cancel()
+        winner_label = game.names.get(event.sender_id, str(event.sender_id))
+        await event.reply(
+            f"✅ Benar!\nJawaban: **{game.answer.upper()}**\n🏆 Pemenang: <b>{winner_label}</b>",
+            parse_mode="html"
+        )
+        try: del client.ccjawa_rooms[chat_id][room["id"]]
+        except: pass
+        return
+
+    # Jika salah → kirim pesan salah sambil reply
+    await event.reply(f"❌ Jawaban salah: {text.upper()}", reply_to=event.message.id)
+
+    # Jika kedua pemain sudah menjawab (dan tidak ada yang benar) → akhiri room
+    pX_done = room["playerX"] in game.answered
+    pO_done = room["playerO"] in game.answered
+    if pX_done and pO_done:
+        room["state"] = "FINISHED"
+        if game.timeout_task:
+            game.timeout_task.cancel()
+        await event.respond(
+            f"⏹️ Cerdas Cermat Jawa berakhir!\nJawaban yang benar: **{game.answer.upper()}**"
+        )
+        try: del client.ccjawa_rooms[chat_id][room["id"]]
+        except: pass
+
+
+
+import random
+
+# === CLASS CERDAS CERMAT BING ===
+class CerdasCermatBingGame:
+    def __init__(self, player_x):
+        self.playerX = player_x
+        self.playerO = None
+        self.currentTurn = player_x
+        self.winner = None
+        self.question = None
+        self.choices = {}
+        self.answer = None
+        self.names = {player_x: "Pembuat room"}
+        self.timeout_task = None
+        self.answered = {}
+
+    async def load_question(self):
+        import requests
+        url = "https://api.siputzx.my.id/api/games/cc-sd?matapelajaran=bing&jumlahsoal=5"
+        resp = requests.get(url)
+        data = resp.json()
+        soal_list = data["data"]["soal"]
+        soal = random.choice(soal_list)  # ambil 1 soal random
+
+        self.question = soal["pertanyaan"]
+        # flatten semua_jawaban jadi dict {huruf: teks}
+        choices = {}
+        for opsi in soal["semua_jawaban"]:
+            for huruf, teks in opsi.items():
+                choices[huruf.upper()] = teks
+        self.choices = choices
+        self.answer = soal["jawaban_benar"].lower().strip()
+
+
+# === STATE GAME PER CHAT ===
+def _ensure_ccbing_state(client, chat_id):
+    if not hasattr(client, "ccbing_rooms"):
+        client.ccbing_rooms = {}
+    if chat_id not in client.ccbing_rooms:
+        client.ccbing_rooms[chat_id] = {}
+
+
+# === HANDLER BUAT / JOIN ROOM ===
+async def ccbing_handler(event, client):
+    chat_id = event.chat_id
+    sender = event.sender_id
+    _ensure_ccbing_state(client, chat_id)
+
+    # Cek apakah sudah ada room PLAYING
+    for r in client.ccbing_rooms[chat_id].values():
+        if r["state"] == "PLAYING":
+            await event.respond("❌ Sudah ada Cerdas Cermat Bing berjalan.\nGunakan /nyerah untuk menyerah.")
+            return
+
+    # Cari room waiting
+    waiting_room = None
+    for r in client.ccbing_rooms[chat_id].values():
+        if r["state"] == "WAITING":
+            waiting_room = r
+            break
+
+    if waiting_room:
+        if sender == waiting_room["playerX"]:
+            await event.respond("❌ Kamu sudah membuat room ini. Tunggu partner join.")
+            return
+
+        # Join sebagai Partner
+        waiting_room["game"].playerO = sender
+        waiting_room["playerO"] = sender
+        waiting_room["state"] = "PLAYING"
+        waiting_room["game"].names[sender] = "Partner"
+
+        # Load soal
+        await waiting_room["game"].load_question()
+        soal = waiting_room["game"].question
+        choices = waiting_room["game"].choices
+
+        msg = (f"Partner ditemukan!\nRoom ID: {waiting_room['id']}\n\n"
+               f"📝 Cerdas Cermat Bing:\n**{soal}**\n\n"
+               + "\n".join([f"{huruf}. {teks}" for huruf, teks in choices.items()])
+               + "\n\n⏱ Waktu menjawab: 1 menit\nJawab hanya dengan `a`, `b`, `c`, atau `d`.")
+        await event.respond(msg)
+
+        # Set timeout 1 menit
+        async def timeout_answer():
+            await asyncio.sleep(60)
+            if waiting_room["state"] == "PLAYING":
+                waiting_room["state"] = "FINISHED"
+                await event.respond(
+                    f"⏰ Waktu habis!\nJawaban: **{waiting_room['game'].answer.upper()}**"
+                )
+                try: del client.ccbing_rooms[chat_id][waiting_room["id"]]
+                except: pass
+
+        waiting_room["game"].timeout_task = asyncio.create_task(timeout_answer())
+
+    else:
+        # Buat room baru
+        room_id = f"ccbing-{chat_id}-{int(datetime.now().timestamp())}"
+        game = CerdasCermatBingGame(sender)
+        new_room = {"id": room_id,"game": game,"playerX": sender,
+                    "playerO": None,"state": "WAITING"}
+        client.ccbing_rooms[chat_id][room_id] = new_room
+        await event.respond("Menunggu partner join...\nGunakan /ccbing untuk join.")
+
+
+# === HANDLER JAWABAN ===
+async def ccbing_answer_handler(event, client):
+    chat_id = event.chat_id
+    text = event.raw_text.strip().lower()
+    _ensure_ccbing_state(client, chat_id)
+
+    room = None
+    for r in client.ccbing_rooms[chat_id].values():
+        if r["state"] == "PLAYING":
+            room = r
+            break
+    if not room:
+        return
+
+    game = room["game"]
+
+    # Hanya playerX/playerO yang boleh menjawab
+    if event.sender_id not in (room["playerX"], room["playerO"]):
+        return
+
+    # Jawaban hanya a, b, c, d
+    if text not in ["a", "b", "c", "d"]:
+        return
+
+    # Cek apakah pemain sudah pernah menjawab
+    if event.sender_id in game.answered:
+        await event.reply("❌ Kamu sudah menjawab sekali, tidak bisa menjawab lagi.")
+        return
+
+    # Tandai pemain sudah menjawab
+    game.answered[event.sender_id] = text
+
+    # Jika benar → langsung menang
+    if text == game.answer:
+        room["state"] = "FINISHED"
+        if game.timeout_task:
+            game.timeout_task.cancel()
+        winner_label = game.names.get(event.sender_id, str(event.sender_id))
+        await event.reply(
+            f"✅ Benar!\nJawaban: **{game.answer.upper()}**\n🏆 Pemenang: <b>{winner_label}</b>",
+            parse_mode="html"
+        )
+        try: del client.ccbing_rooms[chat_id][room["id"]]
+        except: pass
+        return
+
+    # Jika salah → kirim pesan salah sambil reply
+    await event.reply(f"❌ Jawaban salah: {text.upper()}", reply_to=event.message.id)
+
+    # Jika kedua pemain sudah menjawab (dan tidak ada yang benar) → akhiri room
+    pX_done = room["playerX"] in game.answered
+    pO_done = room["playerO"] in game.answered
+    if pX_done and pO_done:
+        room["state"] = "FINISHED"
+        if game.timeout_task:
+            game.timeout_task.cancel()
+        await event.respond(
+            f"⏹️ Cerdas Cermat Bing berakhir!\nJawaban yang benar: **{game.answer.upper()}**"
+        )
+        try: del client.ccbing_rooms[chat_id][room["id"]]
+        except: pass
+
+
+
+import random
+
+# === CLASS CERDAS CERMAT BINDO ===
+class CerdasCermatBindoGame:
+    def __init__(self, player_x):
+        self.playerX = player_x
+        self.playerO = None
+        self.currentTurn = player_x
+        self.winner = None
+        self.question = None
+        self.choices = {}
+        self.answer = None
+        self.names = {player_x: "Pembuat room"}
+        self.timeout_task = None
+        self.answered = {}
+
+    async def load_question(self):
+        import requests
+        url = "https://api.siputzx.my.id/api/games/cc-sd?matapelajaran=bindo&jumlahsoal=5"
+        resp = requests.get(url)
+        data = resp.json()
+        soal_list = data["data"]["soal"]
+        soal = random.choice(soal_list)  # ambil 1 soal random
+
+        self.question = soal["pertanyaan"]
+        # flatten semua_jawaban jadi dict {huruf: teks}
+        choices = {}
+        for opsi in soal["semua_jawaban"]:
+            for huruf, teks in opsi.items():
+                choices[huruf.upper()] = teks
+        self.choices = choices
+        self.answer = soal["jawaban_benar"].lower().strip()
+
+
+# === STATE GAME PER CHAT ===
+def _ensure_ccbindo_state(client, chat_id):
+    if not hasattr(client, "ccbindo_rooms"):
+        client.ccbindo_rooms = {}
+    if chat_id not in client.ccbindo_rooms:
+        client.ccbindo_rooms[chat_id] = {}
+
+
+# === HANDLER BUAT / JOIN ROOM ===
+async def ccbindo_handler(event, client):
+    chat_id = event.chat_id
+    sender = event.sender_id
+    _ensure_ccbindo_state(client, chat_id)
+
+    # Cek apakah sudah ada room PLAYING
+    for r in client.ccbindo_rooms[chat_id].values():
+        if r["state"] == "PLAYING":
+            await event.respond("❌ Sudah ada Cerdas Cermat Bindo berjalan.\nGunakan /nyerah untuk menyerah.")
+            return
+
+    # Cari room waiting
+    waiting_room = None
+    for r in client.ccbindo_rooms[chat_id].values():
+        if r["state"] == "WAITING":
+            waiting_room = r
+            break
+
+    if waiting_room:
+        if sender == waiting_room["playerX"]:
+            await event.respond("❌ Kamu sudah membuat room ini. Tunggu partner join.")
+            return
+
+        # Join sebagai Partner
+        waiting_room["game"].playerO = sender
+        waiting_room["playerO"] = sender
+        waiting_room["state"] = "PLAYING"
+        waiting_room["game"].names[sender] = "Partner"
+
+        # Load soal
+        await waiting_room["game"].load_question()
+        soal = waiting_room["game"].question
+        choices = waiting_room["game"].choices
+
+        msg = (f"Partner ditemukan!\nRoom ID: {waiting_room['id']}\n\n"
+               f"📖 Cerdas Cermat Bindo:\n**{soal}**\n\n"
+               + "\n".join([f"{huruf}. {teks}" for huruf, teks in choices.items()])
+               + "\n\n⏱ Waktu menjawab: 1 menit\nJawab hanya dengan `a`, `b`, `c`, atau `d`.")
+        await event.respond(msg)
+
+        # Set timeout 1 menit
+        async def timeout_answer():
+            await asyncio.sleep(60)
+            if waiting_room["state"] == "PLAYING":
+                waiting_room["state"] = "FINISHED"
+                await event.respond(
+                    f"⏰ Waktu habis!\nJawaban: **{waiting_room['game'].answer.upper()}**"
+                )
+                try: del client.ccbindo_rooms[chat_id][waiting_room["id"]]
+                except: pass
+
+        waiting_room["game"].timeout_task = asyncio.create_task(timeout_answer())
+
+    else:
+        # Buat room baru
+        room_id = f"ccbindo-{chat_id}-{int(datetime.now().timestamp())}"
+        game = CerdasCermatBindoGame(sender)
+        new_room = {"id": room_id,"game": game,"playerX": sender,
+                    "playerO": None,"state": "WAITING"}
+        client.ccbindo_rooms[chat_id][room_id] = new_room
+        await event.respond("Menunggu partner join...\nGunakan /ccbindo untuk join.")
+
+
+# === HANDLER JAWABAN ===
+async def ccbindo_answer_handler(event, client):
+    chat_id = event.chat_id
+    text = event.raw_text.strip().lower()
+    _ensure_ccbindo_state(client, chat_id)
+
+    room = None
+    for r in client.ccbindo_rooms[chat_id].values():
+        if r["state"] == "PLAYING":
+            room = r
+            break
+    if not room:
+        return
+
+    game = room["game"]
+
+    # Hanya playerX/playerO yang boleh menjawab
+    if event.sender_id not in (room["playerX"], room["playerO"]):
+        return
+
+    # Jawaban hanya a, b, c, d
+    if text not in ["a", "b", "c", "d"]:
+        return
+
+    # Cek apakah pemain sudah pernah menjawab
+    if event.sender_id in game.answered:
+        await event.reply("❌ Kamu sudah menjawab sekali, tidak bisa menjawab lagi.")
+        return
+
+    # Tandai pemain sudah menjawab
+    game.answered[event.sender_id] = text
+
+    # Jika benar → langsung menang
+    if text == game.answer:
+        room["state"] = "FINISHED"
+        if game.timeout_task:
+            game.timeout_task.cancel()
+        winner_label = game.names.get(event.sender_id, str(event.sender_id))
+        await event.reply(
+            f"✅ Benar!\nJawaban: **{game.answer.upper()}**\n🏆 Pemenang: <b>{winner_label}</b>",
+            parse_mode="html"
+        )
+        try: del client.ccbindo_rooms[chat_id][room["id"]]
+        except: pass
+        return
+
+    # Jika salah → kirim pesan salah sambil reply
+    await event.reply(f"❌ Jawaban salah: {text.upper()}", reply_to=event.message.id)
+
+    # Jika kedua pemain sudah menjawab (dan tidak ada yang benar) → akhiri room
+    pX_done = room["playerX"] in game.answered
+    pO_done = room["playerO"] in game.answered
+    if pX_done and pO_done:
+        room["state"] = "FINISHED"
+        if game.timeout_task:
+            game.timeout_task.cancel()
+        await event.respond(
+            f"⏹️ Cerdas Cermat Bindo berakhir!\nJawaban yang benar: **{game.answer.upper()}**"
+        )
+        try: del client.ccbindo_rooms[chat_id][room["id"]]
+        except: pass
+
+
+
+import random
+
+# === CLASS CERDAS CERMAT IPS ===
+class CerdasCermatIPSGame:
+    def __init__(self, player_x):
+        self.playerX = player_x
+        self.playerO = None
+        self.currentTurn = player_x
+        self.winner = None
+        self.question = None
+        self.choices = {}
+        self.answer = None
+        self.names = {player_x: "Pembuat room"}
+        self.timeout_task = None
+        self.answered = {}
+
+    async def load_question(self):
+        import requests
+        url = "https://api.siputzx.my.id/api/games/cc-sd?matapelajaran=ips&jumlahsoal=5"
+        resp = requests.get(url)
+        data = resp.json()
+        soal_list = data["data"]["soal"]
+        soal = random.choice(soal_list)  # ambil 1 soal random
+
+        self.question = soal["pertanyaan"]
+        # flatten semua_jawaban jadi dict {huruf: teks}
+        choices = {}
+        for opsi in soal["semua_jawaban"]:
+            for huruf, teks in opsi.items():
+                choices[huruf.upper()] = teks
+        self.choices = choices
+        self.answer = soal["jawaban_benar"].lower().strip()
+
+
+# === STATE GAME PER CHAT ===
+def _ensure_ccips_state(client, chat_id):
+    if not hasattr(client, "ccips_rooms"):
+        client.ccips_rooms = {}
+    if chat_id not in client.ccips_rooms:
+        client.ccips_rooms[chat_id] = {}
+
+
+# === HANDLER BUAT / JOIN ROOM ===
+async def ccips_handler(event, client):
+    chat_id = event.chat_id
+    sender = event.sender_id
+    _ensure_ccips_state(client, chat_id)
+
+    # Cek apakah sudah ada room PLAYING
+    for r in client.ccips_rooms[chat_id].values():
+        if r["state"] == "PLAYING":
+            await event.respond("❌ Sudah ada Cerdas Cermat IPS berjalan.\nGunakan /nyerah untuk menyerah.")
+            return
+
+    # Cari room waiting
+    waiting_room = None
+    for r in client.ccips_rooms[chat_id].values():
+        if r["state"] == "WAITING":
+            waiting_room = r
+            break
+
+    if waiting_room:
+        if sender == waiting_room["playerX"]:
+            await event.respond("❌ Kamu sudah membuat room ini. Tunggu partner join.")
+            return
+
+        # Join sebagai Partner
+        waiting_room["game"].playerO = sender
+        waiting_room["playerO"] = sender
+        waiting_room["state"] = "PLAYING"
+        waiting_room["game"].names[sender] = "Partner"
+
+        # Load soal
+        await waiting_room["game"].load_question()
+        soal = waiting_room["game"].question
+        choices = waiting_room["game"].choices
+
+        msg = (f"Partner ditemukan!\nRoom ID: {waiting_room['id']}\n\n"
+               f"🌍 Cerdas Cermat IPS:\n**{soal}**\n\n"
+               + "\n".join([f"{huruf}. {teks}" for huruf, teks in choices.items()])
+               + "\n\n⏱ Waktu menjawab: 1 menit\nJawab hanya dengan `a`, `b`, `c`, atau `d`.")
+        await event.respond(msg)
+
+        # Set timeout 1 menit
+        async def timeout_answer():
+            await asyncio.sleep(60)
+            if waiting_room["state"] == "PLAYING":
+                waiting_room["state"] = "FINISHED"
+                await event.respond(
+                    f"⏰ Waktu habis!\nJawaban: **{waiting_room['game'].answer.upper()}**"
+                )
+                try: del client.ccips_rooms[chat_id][waiting_room["id"]]
+                except: pass
+
+        waiting_room["game"].timeout_task = asyncio.create_task(timeout_answer())
+
+    else:
+        # Buat room baru
+        room_id = f"ccips-{chat_id}-{int(datetime.now().timestamp())}"
+        game = CerdasCermatIPSGame(sender)
+        new_room = {"id": room_id,"game": game,"playerX": sender,
+                    "playerO": None,"state": "WAITING"}
+        client.ccips_rooms[chat_id][room_id] = new_room
+        await event.respond("Menunggu partner join...\nGunakan /ccips untuk join.")
+
+
+# === HANDLER JAWABAN ===
+async def ccips_answer_handler(event, client):
+    chat_id = event.chat_id
+    text = event.raw_text.strip().lower()
+    _ensure_ccips_state(client, chat_id)
+
+    room = None
+    for r in client.ccips_rooms[chat_id].values():
+        if r["state"] == "PLAYING":
+            room = r
+            break
+    if not room:
+        return
+
+    game = room["game"]
+
+    # Hanya playerX/playerO yang boleh menjawab
+    if event.sender_id not in (room["playerX"], room["playerO"]):
+        return
+
+    # Jawaban hanya a, b, c, d
+    if text not in ["a", "b", "c", "d"]:
+        return
+
+    # Cek apakah pemain sudah pernah menjawab
+    if event.sender_id in game.answered:
+        await event.reply("❌ Kamu sudah menjawab sekali, tidak bisa menjawab lagi.")
+        return
+
+    # Tandai pemain sudah menjawab
+    game.answered[event.sender_id] = text
+
+    # Jika benar → langsung menang
+    if text == game.answer:
+        room["state"] = "FINISHED"
+        if game.timeout_task:
+            game.timeout_task.cancel()
+        winner_label = game.names.get(event.sender_id, str(event.sender_id))
+        await event.reply(
+            f"✅ Benar!\nJawaban: **{game.answer.upper()}**\n🏆 Pemenang: <b>{winner_label}</b>",
+            parse_mode="html"
+        )
+        try: del client.ccips_rooms[chat_id][room["id"]]
+        except: pass
+        return
+
+    # Jika salah → kirim pesan salah sambil reply
+    await event.reply(f"❌ Jawaban salah: {text.upper()}", reply_to=event.message.id)
+
+    # Jika kedua pemain sudah menjawab (dan tidak ada yang benar) → akhiri room
+    pX_done = room["playerX"] in game.answered
+    pO_done = room["playerO"] in game.answered
+    if pX_done and pO_done:
+        room["state"] = "FINISHED"
+        if game.timeout_task:
+            game.timeout_task.cancel()
+        await event.respond(
+            f"⏹️ Cerdas Cermat IPS berakhir!\nJawaban yang benar: **{game.answer.upper()}**"
+        )
+        try: del client.ccips_rooms[chat_id][room["id"]]
+        except: pass
+
+
+
+import random
+
+# === CLASS CERDAS CERMAT IPA ===
+class CerdasCermatIPAGame:
+    def __init__(self, player_x):
+        self.playerX = player_x
+        self.playerO = None
+        self.currentTurn = player_x
+        self.winner = None
+        self.question = None
+        self.choices = {}
+        self.answer = None
+        self.names = {player_x: "Pembuat room"}
+        self.timeout_task = None
+        self.answered = {}
+
+    async def load_question(self):
+        import requests
+        url = "https://api.siputzx.my.id/api/games/cc-sd?matapelajaran=ipa&jumlahsoal=5"
+        resp = requests.get(url)
+        data = resp.json()
+        soal_list = data["data"]["soal"]
+        soal = random.choice(soal_list)  # ambil 1 soal random
+
+        self.question = soal["pertanyaan"]
+        # flatten semua_jawaban jadi dict {huruf: teks}
+        choices = {}
+        for opsi in soal["semua_jawaban"]:
+            for huruf, teks in opsi.items():
+                choices[huruf.upper()] = teks
+        self.choices = choices
+        self.answer = soal["jawaban_benar"].lower().strip()
+
+
+# === STATE GAME PER CHAT ===
+def _ensure_ccipa_state(client, chat_id):
+    if not hasattr(client, "ccipa_rooms"):
+        client.ccipa_rooms = {}
+    if chat_id not in client.ccipa_rooms:
+        client.ccipa_rooms[chat_id] = {}
+
+
+# === HANDLER BUAT / JOIN ROOM ===
+async def ccipa_handler(event, client):
+    chat_id = event.chat_id
+    sender = event.sender_id
+    _ensure_ccipa_state(client, chat_id)
+
+    # Cek apakah sudah ada room PLAYING
+    for r in client.ccipa_rooms[chat_id].values():
+        if r["state"] == "PLAYING":
+            await event.respond("❌ Sudah ada Cerdas Cermat IPA berjalan.\nGunakan /nyerah untuk menyerah.")
+            return
+
+    # Cari room waiting
+    waiting_room = None
+    for r in client.ccipa_rooms[chat_id].values():
+        if r["state"] == "WAITING":
+            waiting_room = r
+            break
+
+    if waiting_room:
+        if sender == waiting_room["playerX"]:
+            await event.respond("❌ Kamu sudah membuat room ini. Tunggu partner join.")
+            return
+
+        # Join sebagai Partner
+        waiting_room["game"].playerO = sender
+        waiting_room["playerO"] = sender
+        waiting_room["state"] = "PLAYING"
+        waiting_room["game"].names[sender] = "Partner"
+
+        # Load soal
+        await waiting_room["game"].load_question()
+        soal = waiting_room["game"].question
+        choices = waiting_room["game"].choices
+
+        msg = (f"Partner ditemukan!\nRoom ID: {waiting_room['id']}\n\n"
+               f"🔬 Cerdas Cermat IPA:\n**{soal}**\n\n"
+               + "\n".join([f"{huruf}. {teks}" for huruf, teks in choices.items()])
+               + "\n\n⏱ Waktu menjawab: 1 menit\nJawab hanya dengan `a`, `b`, `c`, atau `d`.")
+        await event.respond(msg)
+
+        # Set timeout 1 menit
+        async def timeout_answer():
+            await asyncio.sleep(60)
+            if waiting_room["state"] == "PLAYING":
+                waiting_room["state"] = "FINISHED"
+                await event.respond(
+                    f"⏰ Waktu habis!\nJawaban: **{waiting_room['game'].answer.upper()}**"
+                )
+                try: del client.ccipa_rooms[chat_id][waiting_room["id"]]
+                except: pass
+
+        waiting_room["game"].timeout_task = asyncio.create_task(timeout_answer())
+
+    else:
+        # Buat room baru
+        room_id = f"ccipa-{chat_id}-{int(datetime.now().timestamp())}"
+        game = CerdasCermatIPAGame(sender)
+        new_room = {"id": room_id,"game": game,"playerX": sender,
+                    "playerO": None,"state": "WAITING"}
+        client.ccipa_rooms[chat_id][room_id] = new_room
+        await event.respond("Menunggu partner join...\nGunakan /ccipa untuk join.")
+
+
+# === HANDLER JAWABAN ===
+async def ccipa_answer_handler(event, client):
+    chat_id = event.chat_id
+    text = event.raw_text.strip().lower()
+    _ensure_ccipa_state(client, chat_id)
+
+    room = None
+    for r in client.ccipa_rooms[chat_id].values():
+        if r["state"] == "PLAYING":
+            room = r
+            break
+    if not room:
+        return
+
+    game = room["game"]
+
+    # Hanya playerX/playerO yang boleh menjawab
+    if event.sender_id not in (room["playerX"], room["playerO"]):
+        return
+
+    # Jawaban hanya a, b, c, d
+    if text not in ["a", "b", "c", "d"]:
+        return
+
+    # Cek apakah pemain sudah pernah menjawab
+    if event.sender_id in game.answered:
+        await event.reply("❌ Kamu sudah menjawab sekali, tidak bisa menjawab lagi.")
+        return
+
+    # Tandai pemain sudah menjawab
+    game.answered[event.sender_id] = text
+
+    # Jika benar → langsung menang
+    if text == game.answer:
+        room["state"] = "FINISHED"
+        if game.timeout_task:
+            game.timeout_task.cancel()
+        winner_label = game.names.get(event.sender_id, str(event.sender_id))
+        await event.reply(
+            f"✅ Benar!\nJawaban: **{game.answer.upper()}**\n🏆 Pemenang: <b>{winner_label}</b>",
+            parse_mode="html"
+        )
+        try: del client.ccipa_rooms[chat_id][room["id"]]
+        except: pass
+        return
+
+    # Jika salah → kirim pesan salah sambil reply
+    await event.reply(f"❌ Jawaban salah: {text.upper()}", reply_to=event.message.id)
+
+    # Jika kedua pemain sudah menjawab (dan tidak ada yang benar) → akhiri room
+    pX_done = room["playerX"] in game.answered
+    pO_done = room["playerO"] in game.answered
+    if pX_done and pO_done:
+        room["state"] = "FINISHED"
+        if game.timeout_task:
+            game.timeout_task.cancel()
+        await event.respond(
+            f"⏹️ Cerdas Cermat IPA berakhir!\nJawaban yang benar: **{game.answer.upper()}**"
+        )
+        try: del client.ccipa_rooms[chat_id][room["id"]]
+        except: pass
+
+
+
+import random
+
+# === CLASS CERDAS CERMAT MATEMATIKA ===
+class CerdasCermatMathGame:
+    def __init__(self, player_x):
+        self.playerX = player_x
+        self.playerO = None
+        self.currentTurn = player_x
+        self.winner = None
+        self.question = None
+        self.choices = {}
+        self.answer = None
+        self.names = {player_x: "Pembuat room"}
+        self.timeout_task = None
+        self.answered = {}
+
+    async def load_question(self):
+        import requests
+        url = "https://api.siputzx.my.id/api/games/cc-sd?matapelajaran=matematika&jumlahsoal=5"
+        resp = requests.get(url)
+        data = resp.json()
+        soal_list = data["data"]["soal"]
+        soal = random.choice(soal_list)  # ambil 1 soal random
+
+        self.question = soal["pertanyaan"]
+        # flatten semua_jawaban jadi dict {huruf: teks}
+        choices = {}
+        for opsi in soal["semua_jawaban"]:
+            for huruf, teks in opsi.items():
+                choices[huruf.upper()] = teks
+        self.choices = choices
+        self.answer = soal["jawaban_benar"].lower().strip()
+
+
+# === STATE GAME PER CHAT ===
+def _ensure_ccmath_state(client, chat_id):
+    if not hasattr(client, "ccmath_rooms"):
+        client.ccmath_rooms = {}
+    if chat_id not in client.ccmath_rooms:
+        client.ccmath_rooms[chat_id] = {}
+
+
+# === HANDLER BUAT / JOIN ROOM ===
+async def ccmath_handler(event, client):
+    chat_id = event.chat_id
+    sender = event.sender_id
+    _ensure_ccmath_state(client, chat_id)
+
+    # Cek apakah sudah ada room PLAYING
+    for r in client.ccmath_rooms[chat_id].values():
+        if r["state"] == "PLAYING":
+            await event.respond("❌ Sudah ada Cerdas Cermat Matematika berjalan.\nGunakan /nyerah untuk menyerah.")
+            return
+
+    # Cari room waiting
+    waiting_room = None
+    for r in client.ccmath_rooms[chat_id].values():
+        if r["state"] == "WAITING":
+            waiting_room = r
+            break
+
+    if waiting_room:
+        if sender == waiting_room["playerX"]:
+            await event.respond("❌ Kamu sudah membuat room ini. Tunggu partner join.")
+            return
+
+        # Join sebagai Partner
+        waiting_room["game"].playerO = sender
+        waiting_room["playerO"] = sender
+        waiting_room["state"] = "PLAYING"
+        waiting_room["game"].names[sender] = "Partner"
+
+        # Load soal
+        await waiting_room["game"].load_question()
+        soal = waiting_room["game"].question
+        choices = waiting_room["game"].choices
+
+        msg = (f"Partner ditemukan!\nRoom ID: {waiting_room['id']}\n\n"
+               f"📘 Cerdas Cermat Matematika:\n**{soal}**\n\n"
+               + "\n".join([f"{huruf}. {teks}" for huruf, teks in choices.items()])
+               + "\n\n⏱ Waktu menjawab: 1 menit\nJawab hanya dengan `a`, `b`, `c`, atau `d`.")
+        await event.respond(msg)
+
+        # Set timeout 1 menit
+        async def timeout_answer():
+            await asyncio.sleep(60)
+            if waiting_room["state"] == "PLAYING":
+                waiting_room["state"] = "FINISHED"
+                await event.respond(
+                    f"⏰ Waktu habis!\nJawaban: **{waiting_room['game'].answer.upper()}**"
+                )
+                try: del client.ccmath_rooms[chat_id][waiting_room["id"]]
+                except: pass
+
+        waiting_room["game"].timeout_task = asyncio.create_task(timeout_answer())
+
+    else:
+        # Buat room baru
+        room_id = f"ccmath-{chat_id}-{int(datetime.now().timestamp())}"
+        game = CerdasCermatMathGame(sender)
+        new_room = {"id": room_id,"game": game,"playerX": sender,
+                    "playerO": None,"state": "WAITING"}
+        client.ccmath_rooms[chat_id][room_id] = new_room
+        await event.respond("Menunggu partner join...\nGunakan /ccmath untuk join.")
+
+
+# === HANDLER JAWABAN ===
+async def ccmath_answer_handler(event, client):
+    chat_id = event.chat_id
+    text = event.raw_text.strip().lower()
+    _ensure_ccmath_state(client, chat_id)
+
+    room = None
+    for r in client.ccmath_rooms[chat_id].values():
+        if r["state"] == "PLAYING":
+            room = r
+            break
+    if not room:
+        return
+
+    game = room["game"]
+
+    # Hanya playerX/playerO yang boleh menjawab
+    if event.sender_id not in (room["playerX"], room["playerO"]):
+        return
+
+    # Jawaban hanya a, b, c, d
+    if text not in ["a", "b", "c", "d"]:
+        return
+
+    # Cek apakah pemain sudah pernah menjawab
+    if event.sender_id in room["game"].answered:
+        await event.reply("❌ Kamu sudah menjawab sekali, tidak bisa menjawab lagi.")
+        return
+
+    # Tandai pemain sudah menjawab
+    room["game"].answered[event.sender_id] = text
+
+    # Jika benar → langsung menang
+    if text == game.answer:
+        room["state"] = "FINISHED"
+        if game.timeout_task:
+            game.timeout_task.cancel()
+        winner_label = game.names.get(event.sender_id, str(event.sender_id))
+        await event.reply(
+            f"✅ Benar!\nJawaban: **{game.answer.upper()}**\n🏆 Pemenang: <b>{winner_label}</b>",
+            parse_mode="html"
+        )
+        try: del client.ccmath_rooms[chat_id][room["id"]]
+        except: pass
+        return
+
+    # Jika salah → kirim pesan salah sambil reply
+    await event.reply(f"❌ Jawaban salah: {text.upper()}", reply_to=event.message.id)
+
+    # Jika kedua pemain sudah menjawab (dan tidak ada yang benar) → akhiri room
+    pX_done = room["playerX"] in room["game"].answered
+    pO_done = room["playerO"] in room["game"].answered
+    if pX_done and pO_done:
+        room["state"] = "FINISHED"
+        if game.timeout_task:
+            game.timeout_task.cancel()
+        await event.respond(
+            f"⏹️ Cerdas Cermat Matematika berakhir!\nJawaban yang benar: **{game.answer.upper()}**"
+        )
+        try: del client.ccmath_rooms[chat_id][room["id"]]
+        except: pass
+
 
 
 # === CLASS SUSUN KATA ===
@@ -328,10 +2458,10 @@ class SusunKataGame:
 
     async def load_question(self):
         import requests
-        url = "https://api.vreden.my.id/api/v1/game/susunkata"
+        url = "https://api.siputzx.my.id/api/games/susunkata"
         resp = requests.get(url)
         data = resp.json()
-        q = data["result"]
+        q = data["data"]
         self.soal = q["soal"]
         self.tipe = q["tipe"]
         self.answer = q["jawaban"].lower().strip()
@@ -440,6 +2570,140 @@ async def susunkata_answer_handler(event, client):
     else:
         # Jangan balas kalau salah
         return
+
+
+
+# === CLASS TEBAK HEWAN ===
+class TebakHewanGame:
+    def __init__(self, player_x):
+        self.playerX = player_x
+        self.playerO = None
+        self.currentTurn = player_x
+        self.winner = None
+        self.img_url = None
+        self.answer = None
+        self.names = {player_x: "Pembuat room"}
+        self.timeout_task = None
+
+    async def load_question(self):
+        import requests
+        url = "https://api.vreden.my.id/api/v1/game/tebak/hewan"
+        resp = requests.get(url)
+        data = resp.json()
+        q = data["result"]
+        self.img_url = q["url"]
+        self.answer = q["title"].lower().strip()
+        
+
+# === STATE GAME PER CHAT ===
+def _ensure_tebakhewan_state(client, chat_id):
+    if not hasattr(client, "tebakhewan_rooms"):
+        client.tebakhewan_rooms = {}
+    if chat_id not in client.tebakhewan_rooms:
+        client.tebakhewan_rooms[chat_id] = {}
+
+
+# === HANDLER BUAT / JOIN ROOM ===
+async def tebakhewan_handler(event, client):
+    chat_id = event.chat_id
+    sender = event.sender_id
+    _ensure_tebakhewan_state(client, chat_id)
+
+    # Cek apakah sudah ada room PLAYING
+    for r in client.tebakhewan_rooms[chat_id].values():
+        if r["state"] == "PLAYING":
+            await event.respond("❌ Sudah ada Tebak Hewan berjalan.\nGunakan /nyerah untuk menyerah.")
+            return
+
+    # Cari room waiting
+    waiting_room = None
+    for r in client.tebakhewan_rooms[chat_id].values():
+        if r["state"] == "WAITING":
+            waiting_room = r
+            break
+
+    if waiting_room:
+        if sender == waiting_room["playerX"]:
+            await event.respond("❌ Kamu sudah membuat room ini. Tunggu partner join.")
+            return
+
+        # Join sebagai Partner
+        waiting_room["game"].playerO = sender
+        waiting_room["playerO"] = sender
+        waiting_room["state"] = "PLAYING"
+        waiting_room["game"].names[sender] = "Partner"
+
+        # Load soal
+        await waiting_room["game"].load_question()
+        img_url = waiting_room["game"].img_url
+
+        # Pesan teks instruksi
+        msg_text = (
+            f"Partner ditemukan!\nRoom ID: {waiting_room['id']}\n\n"
+            f"🐾 Tebak Hewan:\n"
+            f"⏱ Waktu menjawab: 1 menit\n"
+            f"Tebak nama hewan dari gambar berikut!"
+        )
+        await event.respond(msg_text)
+
+        # Kirim gambar langsung
+        await client.send_file(chat_id, img_url, caption="🐾 Silakan tebak hewan ini!")
+
+        # Set timeout 1 menit
+        async def timeout_answer():
+            await asyncio.sleep(60)
+            if waiting_room["state"] == "PLAYING":
+                waiting_room["state"] = "FINISHED"
+                await event.respond(
+                    f"⏰ Waktu habis!\nJawaban: **{waiting_room['game'].answer.title()}**"
+                )
+                try: del client.tebakhewan_rooms[chat_id][waiting_room["id"]]
+                except: pass
+
+        waiting_room["game"].timeout_task = asyncio.create_task(timeout_answer())
+
+    else:
+        # Buat room baru
+        room_id = f"tebakhewan-{chat_id}-{int(datetime.now().timestamp())}"
+        game = TebakHewanGame(sender)
+        new_room = {"id": room_id,"game": game,"playerX": sender,
+                    "playerO": None,"state": "WAITING"}
+        client.tebakhewan_rooms[chat_id][room_id] = new_room
+        await event.respond("Menunggu partner join...\nGunakan /tebakhewan untuk join.")
+
+
+# === HANDLER JAWABAN ===
+async def tebakhewan_answer_handler(event, client):
+    chat_id = event.chat_id
+    text = event.raw_text.strip().lower()
+    _ensure_tebakhewan_state(client, chat_id)
+
+    room = None
+    for r in client.tebakhewan_rooms[chat_id].values():
+        if r["state"] == "PLAYING":
+            room = r
+            break
+    if not room:
+        return
+
+    game = room["game"]
+
+    # Cek jawaban
+    if text == game.answer:
+        room["state"] = "FINISHED"
+        if game.timeout_task:
+            game.timeout_task.cancel()
+        winner_label = game.names.get(event.sender_id, str(event.sender_id))
+        await event.reply(
+            f"✅ Benar!\nJawaban: **{game.answer.title()}**\n🏆 Pemenang: <b>{winner_label}</b>",
+            parse_mode="html"
+        )
+        try: del client.tebakhewan_rooms[chat_id][room["id"]]
+        except: pass
+    else:
+        # Jangan balas kalau salah
+        return
+
 
 
 # === CLASS MATH GAME ===
@@ -1835,7 +4099,6 @@ async def ai5_handler(event, client):
 
 
 
-
 async def simsimi_handler(event, client):
     
 
@@ -1871,7 +4134,7 @@ async def simsimi_handler(event, client):
             async with session.get(url, timeout=60) as resp:
                 data = await resp.json()
 
-        if data.get("status") and "result" in data:
+        if data.get("success") and "result" in data:
             output = data["result"]
             
         else:
@@ -1881,6 +4144,7 @@ async def simsimi_handler(event, client):
 
     except Exception as e:
         await loading_msg.edit(f"⚠ Error AI: `{e}`")
+
 
 
 
@@ -2865,7 +5129,6 @@ async def tictactoe_move_handler(event, client):
 
 
 
-
 # === HANDLER MENYERAH (gabungan semua game) ===
 async def surrender_room_handler(event, client):
     chat_id = event.chat_id
@@ -2886,7 +5149,18 @@ async def surrender_room_handler(event, client):
         ("caklontong", "caklontong_rooms"),
         ("tebaktebakan", "tebaktebakan_rooms"),
         ("math", "math_rooms"),
+        ("tebakhewan", "tebakhewan_rooms"),
         ("susunkata", "susunkata_rooms"),
+        ("ccmath", "ccmath_rooms"),
+        ("ccipa", "ccipa_rooms"),
+        ("ccips", "ccips_rooms"),
+        ("ccbindo", "ccbindo_rooms"),
+        ("ccbing", "ccbing_rooms"),
+        ("ccjawa", "ccjawa_rooms"),
+        ("ccpai", "ccpai_rooms"),
+        ("ccpkn", "ccpkn_rooms"),
+        ("ccpenjas", "ccpenjas_rooms"),
+        ("cctik", "cctik_rooms"),
     ]
 
     found_room = None
@@ -2944,7 +5218,18 @@ async def cancel_room_handler(event, client):
         ("caklontong", "caklontong_rooms"),
         ("tebaktebakan", "tebaktebakan_rooms"),
         ("math", "math_rooms"),
+        ("tebakhewan", "tebakhewan_rooms"),
         ("susunkata", "susunkata_rooms"),
+        ("ccmath", "ccmath_rooms"),
+        ("ccipa", "ccipa_rooms"),
+        ("ccips", "ccips_rooms"),
+        ("ccbindo", "ccbindo_rooms"),
+        ("ccbing", "ccbing_rooms"),
+        ("ccjawa", "ccjawa_rooms"),
+        ("ccpai", "ccpai_rooms"),
+        ("ccpkn", "ccpkn_rooms"),
+        ("ccpenjas", "ccpenjas_rooms"),
+        ("cctik", "cctik_rooms"),
     ]
 
     found_room = None
@@ -4620,6 +6905,18 @@ async def main():
             async def math_answer_event(event, c=client):
                 await math_answer_handler(event, c)
 
+        # === TEBAK HEWAN (buat/join room) ===
+        if "tebakhewan" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^/(?:tebakhewan|th)$"))
+            async def tebakhewan_event(event, c=client):
+                await tebakhewan_handler(event, c)
+
+        # === TEBAK HEWAN (jawaban user) ===
+        if "tebakhewan" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^(?!/).*"))
+            async def tebakhewan_answer_event(event, c=client):
+                await tebakhewan_answer_handler(event, c)
+
         # === SUSUN KATA (buat/join room) ===
         if "susunkata" in acc["features"]:
             @client.on(events.NewMessage(pattern=r"^/(?:susunkata|sk)$"))
@@ -4632,8 +6929,138 @@ async def main():
             async def susunkata_answer_event(event, c=client):
                 await susunkata_answer_handler(event, c)
 
+        # === CERDAS CERMAT MATEMATIKA (buat/join room) ===
+        if "ccmath" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^/(?:ccmath|ccm)$"))
+            async def ccmath_event(event, c=client):
+                await ccmath_handler(event, c)
 
-        
+        # === CERDAS CERMAT MATEMATIKA (jawaban user: a/b/c/d huruf kecil maupun besar) ===
+        if "ccmath" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^(?:[aA]|[bB]|[cC]|[dD])$"))
+            async def ccmath_answer_event(event, c=client):
+                await ccmath_answer_handler(event, c)
+
+        # === CERDAS CERMAT IPA (buat/join room) ===
+        if "ccipa" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^/(?:ccipa|cci)$"))
+            async def ccipa_event(event, c=client):
+                await ccipa_handler(event, c)
+
+        # === CERDAS CERMAT IPA (jawaban user: a/b/c/d huruf kecil maupun besar) ===
+        if "ccipa" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^(?:[aA]|[bB]|[cC]|[dD])$"))
+            async def ccipa_answer_event(event, c=client):
+                await ccipa_answer_handler(event, c)
+
+        # === CERDAS CERMAT IPS (buat/join room) ===
+        if "ccips" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^/(?:ccips|cci)$"))
+            async def ccips_event(event, c=client):
+                await ccips_handler(event, c)
+
+        # === CERDAS CERMAT IPS (jawaban user: a/b/c/d huruf kecil maupun besar) ===
+        if "ccips" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^(?:[aA]|[bB]|[cC]|[dD])$"))
+            async def ccips_answer_event(event, c=client):
+                await ccips_answer_handler(event, c)
+
+        # === CERDAS CERMAT BINDO (buat/join room) ===
+        if "ccbindo" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^/(?:ccbindo|ccb)$"))
+            async def ccbindo_event(event, c=client):
+                await ccbindo_handler(event, c)
+
+        # === CERDAS CERMAT BINDO (jawaban user: a/b/c/d huruf kecil maupun besar) ===
+        if "ccbindo" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^(?:[aA]|[bB]|[cC]|[dD])$"))
+            async def ccbindo_answer_event(event, c=client):
+                await ccbindo_answer_handler(event, c)
+
+        # === CERDAS CERMAT BING (buat/join room) ===
+        if "ccbing" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^/(?:ccbing|ccbi)$"))
+            async def ccbing_event(event, c=client):
+                await ccbing_handler(event, c)
+
+        # === CERDAS CERMAT BING (jawaban user: a/b/c/d huruf kecil maupun besar) ===
+        if "ccbing" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^(?:[aA]|[bB]|[cC]|[dD])$"))
+            async def ccbing_answer_event(event, c=client):
+                await ccbing_answer_handler(event, c)
+
+        # === CERDAS CERMAT JAWA (buat/join room) ===
+        if "ccjawa" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^/(?:ccjawa|ccj)$"))
+            async def ccjawa_event(event, c=client):
+                await ccjawa_handler(event, c)
+
+        # === CERDAS CERMAT JAWA (jawaban user: a/b/c/d huruf kecil maupun besar) ===
+        if "ccjawa" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^(?:[aA]|[bB]|[cC]|[dD])$"))
+            async def ccjawa_answer_event(event, c=client):
+                await ccjawa_answer_handler(event, c)
+
+        # === CERDAS CERMAT PAI (buat/join room) ===
+        if "ccpai" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^/(?:ccpai|ccp)$"))
+            async def ccpai_event(event, c=client):
+                await ccpai_handler(event, c)
+
+        # === CERDAS CERMAT PAI (jawaban user: a/b/c/d huruf kecil maupun besar) ===
+        if "ccpai" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^(?:[aA]|[bB]|[cC]|[dD])$"))
+            async def ccpai_answer_event(event, c=client):
+                await ccpai_answer_handler(event, c)
+
+        # === CERDAS CERMAT PKN (buat/join room) ===
+        if "ccpkn" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^/(?:ccpkn|ccpk)$"))
+            async def ccpkn_event(event, c=client):
+                await ccpkn_handler(event, c)
+
+        # === CERDAS CERMAT PKN (jawaban user: a/b/c/d huruf kecil maupun besar) ===
+        if "ccpkn" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^(?:[aA]|[bB]|[cC]|[dD])$"))
+            async def ccpkn_answer_event(event, c=client):
+                await ccpkn_answer_handler(event, c)
+
+        # === CERDAS CERMAT PENJAS (buat/join room) ===
+        if "ccpenjas" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^/(?:ccpenjas|ccpj)$"))
+            async def ccpenjas_event(event, c=client):
+                await ccpenjas_handler(event, c)
+
+        # === CERDAS CERMAT PENJAS (jawaban user: a/b/c/d huruf kecil maupun besar) ===
+        if "ccpenjas" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^(?:[aA]|[bB]|[cC]|[dD])$"))
+            async def ccpenjas_answer_event(event, c=client):
+                await ccpenjas_answer_handler(event, c)
+
+        # === CERDAS CERMAT TIK (buat/join room) ===
+        if "cctik" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^/(?:cctik|cct)$"))
+            async def cctik_event(event, c=client):
+                await cctik_handler(event, c)
+
+        # === CERDAS CERMAT TIK (jawaban user: a/b/c/d huruf kecil maupun besar) ===
+        if "cctik" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^(?:[aA]|[bB]|[cC]|[dD])$"))
+            async def cctik_answer_event(event, c=client):
+                await cctik_answer_handler(event, c)
+
+        # Random Cerdas Cermat
+        if "ccrandom" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^/ccrandom$"))
+            async def random_cc_event(event, c=client):
+                await random_cc_handler(event, c)
+                
+        # Random Teka-teki
+        if "tekarandom" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^/tekarandom$"))
+            async def random_teka_event(event, c=client):
+                await random_teka_handler(event, c)
+
         # Random Semua
         if "random" in acc["features"]:
             @client.on(events.NewMessage(pattern=r"^/random$"))
@@ -4664,6 +7091,7 @@ async def main():
 
 
         client.add_event_handler(lambda e: game_handler(e, client), events.NewMessage(pattern=r"^/game$"))
+        client.add_event_handler(lambda e: cerdascermat_handler(e, client), events.NewMessage(pattern=r"^/cerdascermat$"))
 
 
         # === NYERAH (gabungan semua game) ===
@@ -4715,10 +7143,33 @@ async def main():
 
         
 
+        if "dongeng" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^/dongeng$"))
+            async def dongeng_event(event, c=client):
+                await dongeng_handler(event, c)
+
+        if "brat" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^/brat(?:\s+.+)?$"))
+            async def brat_event(event, c=client):
+                await brat_handler(event, c)
+
+
         if "cecan" in acc["features"]:
             @client.on(events.NewMessage(pattern=r"^/cecan(?:\s+\w+)?$"))
             async def cecan_event(event, c=client):
                 await cecan_handler(event, c)
+
+        if "blurface" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^/blurface(?:\s+.+)?$"))
+            async def blurface_event(event, c=client):
+                await blurface_handler(event, c)
+
+        if "hd" in acc["features"]:
+            @client.on(events.NewMessage(pattern=r"^/hd(?:\s+.+)?$"))
+            async def hd_event(event, c=client):
+                await hd_handler(event, c)
+
+
 
         
 
