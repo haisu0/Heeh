@@ -188,17 +188,14 @@ async def cerdascermat_handler(event, client):
 
 
 
-import aiohttp
 import random
 
 VALID_EXT = (".jpg", ".jpeg", ".png", ".gif", ".webp")
 
 async def hd_handler(event, client):
-    # hanya di chat private
     if not event.is_private:
         return
 
-    # hanya userbot sendiri
     me = await client.get_me()
     if event.sender_id != me.id:
         return
@@ -207,38 +204,46 @@ async def hd_handler(event, client):
     scale = None
     image_url = None
 
-    # cek argumen scale
     if len(args) > 1 and args[1] in ["2", "4"]:
         scale = int(args[1])
-        # kalau ada link setelah scale
         if len(args) > 2:
             image_url = args[2]
     elif len(args) > 1:
-        # kalau argumen bukan 2/4, mungkin link
         image_url = args[1]
 
-    # kalau scale belum ditentukan → random
     if scale is None:
         scale = random.choice([2, 4])
 
-    # cek sumber gambar
+    async def upload_to_catbox(path):
+        async with aiohttp.ClientSession() as session:
+            with open(path, "rb") as f:
+                form = aiohttp.FormData()
+                form.add_field("reqtype", "fileupload")
+                form.add_field("fileToUpload", f, filename=os.path.basename(path))
+                resp = await session.post("https://catbox.moe/user/api.php", data=form)
+                return (await resp.text()).strip()
+
+    # ambil sumber gambar
     if not image_url:
         if event.is_reply:
             reply_msg = await event.get_reply_message()
             if reply_msg.photo:
-                image_url = await client.download_media(reply_msg, file=bytes)
+                path = await client.download_media(reply_msg)
+                image_url = await upload_to_catbox(path)
+                os.remove(path)
             elif reply_msg.text and ("http://" in reply_msg.text or "https://" in reply_msg.text):
                 image_url = reply_msg.text.strip()
             else:
                 await event.respond("❌ Reply hanya bisa ke foto atau teks berisi link gambar.")
                 return
         elif event.photo and args[0] == "/hd":
-            image_url = await client.download_media(event.message, file=bytes)
+            path = await client.download_media(event.message)
+            image_url = await upload_to_catbox(path)
+            os.remove(path)
         else:
             await event.respond("❌ Gunakan `/hd`, `/hd 2`, `/hd 4` dengan reply foto, reply teks berisi link gambar, kirim foto dengan caption `/hd`, atau `/hd <link>`.")
             return
 
-    # validasi link gambar
     if isinstance(image_url, str):
         if not image_url.lower().endswith(VALID_EXT):
             await event.respond("❌ Link bukan gambar valid. Harus berakhiran .jpg, .jpeg, .png, .gif, atau .webp.")
@@ -247,26 +252,43 @@ async def hd_handler(event, client):
     await event.respond(f"🔍 Sedang meng-upscale gambar dengan scale {scale}x...")
 
     try:
-        url = f"https://api.siputzx.my.id/api/iloveimg/upscale?image={image_url}&scale={str(scale)}"
-        
-        await client.send_file(event.chat_id, url, caption=f"✨ HD Upscale {scale}x selesai")
-        
+        # 1. Panggil API untuk hasil upscale
+        api_url = f"https://api.siputzx.my.id/api/iloveimg/upscale?image={image_url}&scale={scale}"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url) as resp:
+                if resp.status != 200:
+                    await event.respond("❌ Upscale API gagal.")
+                    return
+                path = "upscale_result.png"
+                with open(path, "wb") as f:
+                    f.write(await resp.read())
+
+        # 2. Upload hasil ke Catbox
+        catbox_url = await upload_to_catbox(path)
+
+        # 3. Kirim foto langsung + link Catbox
+        await client.send_file(
+            event.chat_id,
+            path,
+            caption=f"✨ HD Upscale {scale}x selesai!\n🔗 {catbox_url}"
+        )
+
+        # 4. Hapus file lokal biar gak penuh
+        os.remove(path)
+
     except Exception as e:
         await event.respond(f"❌ Error HD: {e}")
 
 
 
 
-import aiohttp
 
 VALID_EXT = (".jpg", ".jpeg", ".png", ".gif", ".webp")
 
 async def blurface_handler(event, client):
-    # hanya di chat private
     if not event.is_private:
         return
 
-    # hanya userbot sendiri
     me = await client.get_me()
     if event.sender_id != me.id:
         return
@@ -282,7 +304,18 @@ async def blurface_handler(event, client):
     elif event.is_reply:
         reply_msg = await event.get_reply_message()
         if reply_msg.photo:
-            image_url = await client.download_media(reply_msg, file=bytes)
+            # download ke path lokal
+            path = await client.download_media(reply_msg)
+            # upload ke catbox
+            async with aiohttp.ClientSession() as session:
+                with open(path, "rb") as f:
+                    form = aiohttp.FormData()
+                    form.add_field("reqtype", "fileupload")
+                    form.add_field("fileToUpload", f, filename=path.split("/")[-1])
+                    resp = await session.post("https://catbox.moe/user/api.php", data=form)
+                    uploaded_url = (await resp.text()).strip()
+            image_url = uploaded_url
+            os.remove(path)
         elif reply_msg.text and ("http://" in reply_msg.text or "https://" in reply_msg.text):
             image_url = reply_msg.text.strip()
         else:
@@ -291,7 +324,16 @@ async def blurface_handler(event, client):
 
     # 3. Kirim foto dengan caption /blurface
     elif event.photo and event.raw_text.strip() == "/blurface":
-        image_url = await client.download_media(event.message, file=bytes)
+        path = await client.download_media(event.message)
+        async with aiohttp.ClientSession() as session:
+            with open(path, "rb") as f:
+                form = aiohttp.FormData()
+                form.add_field("reqtype", "fileupload")
+                form.add_field("fileToUpload", f, filename=path.split("/")[-1])
+                resp = await session.post("https://catbox.moe/user/api.php", data=form)
+                uploaded_url = (await resp.text()).strip()
+        image_url = uploaded_url
+        os.remove(path)
 
     else:
         await event.respond("❌ Gunakan `/blurface <link gambar>`, reply foto, reply teks berisi link gambar, atau kirim foto dengan caption `/blurface`.")
@@ -307,15 +349,15 @@ async def blurface_handler(event, client):
 
     try:
         url = f"https://api.siputzx.my.id/api/iloveimg/blurface?image={image_url}"
-        
         await client.send_file(event.chat_id, url, caption="😎 Blur face selesai")
-        
     except Exception as e:
         await event.respond(f"❌ Error blur face: {e}")
 
 
 
 
+import aiohttp
+import os
 import html
 
 async def brat_handler(event, client):
@@ -347,15 +389,45 @@ async def brat_handler(event, client):
     await event.respond("🎀 Sedang membuat brat...")
 
     try:
-        # langsung kirim link API sebagai foto
-        url = f"https://api.siputzx.my.id/api/m/brat?text={text}&isAnimated=false&delay=500"
-        caption = f"🎀 Brat untuk teks: {html.escape(text)}"
+        # 1. Panggil API brat
+        api_url = f"https://api.siputzx.my.id/api/m/brat?text={text}&isAnimated=false&delay=500"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url) as resp:
+                if resp.status != 200:
+                    await event.respond("❌ API brat gagal.")
+                    return
+                path = "brat_result.png"
+                with open(path, "wb") as f:
+                    f.write(await resp.read())
 
-        await client.send_file(event.chat_id, url, caption=caption)
+        # 2. Upload hasil ke Catbox
+        async with aiohttp.ClientSession() as session:
+            with open(path, "rb") as f:
+                form = aiohttp.FormData()
+                form.add_field("reqtype", "fileupload")
+                form.add_field("fileToUpload", f, filename=os.path.basename(path))
+                resp = await session.post("https://catbox.moe/user/api.php", data=form)
+                catbox_url = (await resp.text()).strip()
+
+        caption = f"🎀 Brat untuk teks: {html.escape(text)}\n🔗 {catbox_url}"
+
+        # 3. Kirim sebagai foto
+        try:
+            await client.send_file(event.chat_id, path, caption=caption)
+        except Exception as e:
+            await event.respond(f"❌ Error kirim foto brat: {e}")
+
+        # 4. Kirim sebagai stiker
+        try:
+            await client.send_file(event.chat_id, path, force_document=False, reply_to=event.id)
+        except Exception as e:
+            await event.respond(f"❌ Error kirim stiker brat: {e}")
+
+        # 5. Hapus file lokal biar gak penuh
+        os.remove(path)
 
     except Exception as e:
         await event.respond(f"❌ Error brat: {e}")
-
 
 
 
@@ -369,6 +441,15 @@ CECAN_ENDPOINTS = {
     "thailand": "https://api.siputzx.my.id/api/r/cecan/thailand",
     "vietnam": "https://api.siputzx.my.id/api/r/cecan/vietnam",
 }
+
+async def upload_to_catbox(path):
+    async with aiohttp.ClientSession() as session:
+        with open(path, "rb") as f:
+            form = aiohttp.FormData()
+            form.add_field("reqtype", "fileupload")
+            form.add_field("fileToUpload", f, filename=os.path.basename(path))
+            resp = await session.post("https://catbox.moe/user/api.php", data=form)
+            return (await resp.text()).strip()
 
 async def cecan_handler(event, client):
     me = await client.get_me()
@@ -388,12 +469,36 @@ async def cecan_handler(event, client):
     await event.respond(f"📸 Sedang mengambil cecan {negara.capitalize()}...")
 
     try:
-        await client.send_file(
-            event.chat_id,
-            url,  # langsung pakai link API
-            caption=f"✨ Cecan {negara.capitalize()}",
-            force_document=False  # penting: kirim sebagai foto
-        )
+        # 1. Ambil hasil dari API
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                if resp.status != 200:
+                    await event.respond("❌ API cecan gagal.")
+                    return
+                path = "cecan_result.jpg"
+                with open(path, "wb") as f:
+                    f.write(await resp.read())
+
+        # 2. Upload ke Catbox
+        catbox_url = await upload_to_catbox(path)
+
+        caption = f"✨ Cecan {negara.capitalize()}\n🔗 {catbox_url}"
+
+        # 3. Kirim sebagai foto
+        try:
+            await client.send_file(event.chat_id, path, caption=caption)
+        except Exception as e:
+            await event.respond(f"❌ Error kirim foto cecan: {e}")
+
+        # 4. Kirim sebagai stiker
+        try:
+            await client.send_file(event.chat_id, path, force_document=False, reply_to=event.id)
+        except Exception as e:
+            await event.respond(f"❌ Error kirim stiker cecan: {e}")
+
+        # 5. Hapus file lokal
+        os.remove(path)
+
     except Exception as e:
         await event.respond(f"❌ Gagal mengambil cecan: {e}")
 
