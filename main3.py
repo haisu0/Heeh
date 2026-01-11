@@ -214,14 +214,15 @@ async def hd_handler(event, client):
     if scale is None:
         scale = random.choice([2, 4])
 
-    async def upload_to_catbox(path):
+    async def upload_to_uguu(path):
         async with aiohttp.ClientSession() as session:
             with open(path, "rb") as f:
                 form = aiohttp.FormData()
-                form.add_field("reqtype", "fileupload")
-                form.add_field("fileToUpload", f, filename=os.path.basename(path))
-                resp = await session.post("https://catbox.moe/user/api.php", data=form)
-                return (await resp.text()).strip()
+                form.add_field("files[]", f, filename=f"{int(os.path.getmtime(path))}.jpg")
+                resp = await session.post("https://uguu.se/upload.php", data=form)
+                json_resp = await resp.json()
+                # hasilnya berupa list, ambil link pertama
+                return json_resp[0]["url"]
 
     # ambil sumber gambar
     if not image_url:
@@ -229,7 +230,7 @@ async def hd_handler(event, client):
             reply_msg = await event.get_reply_message()
             if reply_msg.photo:
                 path = await client.download_media(reply_msg)
-                image_url = await upload_to_catbox(path)
+                image_url = await upload_to_uguu(path)
                 os.remove(path)
             elif reply_msg.text and ("http://" in reply_msg.text or "https://" in reply_msg.text):
                 image_url = reply_msg.text.strip()
@@ -238,7 +239,7 @@ async def hd_handler(event, client):
                 return
         elif event.photo and args[0] == "/hd":
             path = await client.download_media(event.message)
-            image_url = await upload_to_catbox(path)
+            image_url = await upload_to_uguu(path)
             os.remove(path)
         else:
             await event.respond("❌ Gunakan `/hd`, `/hd 2`, `/hd 4` dengan reply foto, reply teks berisi link gambar, kirim foto dengan caption `/hd`, atau `/hd <link>`.")
@@ -263,14 +264,14 @@ async def hd_handler(event, client):
                 with open(path, "wb") as f:
                     f.write(await resp.read())
 
-        # 2. Upload hasil ke Catbox
-        catbox_url = await upload_to_catbox(path)
+        # 2. Upload hasil ke Uguu
+        uguu_url = await upload_to_uguu(path)
 
-        # 3. Kirim foto langsung + link Catbox
+        # 3. Kirim foto langsung + link Uguu
         await client.send_file(
             event.chat_id,
             path,
-            caption=f"✨ HD Upscale {scale}x selesai!\n🔗 {catbox_url}"
+            caption=f"✨ HD Upscale {scale}x selesai!\n🔗 {uguu_url}"
         )
 
         # 4. Hapus file lokal biar gak penuh
@@ -278,7 +279,6 @@ async def hd_handler(event, client):
 
     except Exception as e:
         await event.respond(f"❌ Error HD: {e}")
-
 
 
 
